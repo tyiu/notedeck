@@ -1,11 +1,9 @@
 use core::f32;
+use std::borrow::Cow;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use egui::{
-    pos2, vec2, Align, Button, Color32, FontId, Id, ImageSource, Margin, Pos2, Rect, RichText,
-    Separator, Ui, Vec2,
-};
+use egui::{pos2, vec2, Align, Button, Color32, FontId, Id, ImageSource, Margin, Pos2, Rect, RichText, Separator, TextBuffer, Ui, Vec2};
 use nostrdb::Ndb;
 use tracing::error;
 
@@ -17,6 +15,9 @@ use crate::{
     user_account::UserAccount,
     Damus,
 };
+
+use fluent_resmgr::resource_manager::ResourceManager;
+use unic_langid::LanguageIdentifier;
 
 use super::{anim::AnimationHelper, padding};
 
@@ -85,6 +86,7 @@ pub struct AddColumnView<'a> {
     key_state_map: &'a mut HashMap<Id, AcquireKeyState>,
     ndb: &'a Ndb,
     cur_account: Option<&'a UserAccount>,
+    res_mgr: &'a ResourceManager,
 }
 
 impl<'a> AddColumnView<'a> {
@@ -92,11 +94,13 @@ impl<'a> AddColumnView<'a> {
         key_state_map: &'a mut HashMap<Id, AcquireKeyState>,
         ndb: &'a Ndb,
         cur_account: Option<&'a UserAccount>,
+        res_mgr: &'a ResourceManager,
     ) -> Self {
         Self {
             key_state_map,
             ndb,
             cur_account,
+            res_mgr,
         }
     }
 
@@ -218,7 +222,7 @@ impl<'a> AddColumnView<'a> {
             title_font_max_size + desc_font_max_size + (2.0 * height_padding)
         };
 
-        let helper = AnimationHelper::new(ui, data.title, vec2(max_width, max_height));
+        let helper = AnimationHelper::new(ui, &data.title, vec2(max_width, max_height));
         let animation_rect = helper.get_animation_rect();
 
         let cur_icon_width = helper.scale_1d_pos(min_icon_width);
@@ -276,9 +280,23 @@ impl<'a> AddColumnView<'a> {
     }
 
     fn get_base_options(&self) -> Vec<ColumnOptionData> {
+        let default_locale: LanguageIdentifier = "en-US".parse().expect("Parsing failed.");
+        let resources = vec!["notedeck.ftl".into()];
+        let bundle = self.res_mgr
+            .get_bundle(
+                vec![default_locale],
+                resources,
+            )
+            .expect("Could not get bundle");
+        let mut errors = vec![];
+        // Avoid using expect because it will panic. Unless we want it to panic.
+        let msg = bundle.get_message("universe-title").expect("Message exists");
+        let pattern = msg.value().expect("Message has a value");
+        let value = bundle.format_pattern(pattern, None, &mut errors);
+
         let mut vec = Vec::new();
         vec.push(ColumnOptionData {
-            title: "Universe",
+            title: value,
             description: "See the whole nostr universe",
             icon: egui::include_image!("../../assets/icons/universe_icon_dark_4x.png"),
             option: AddColumnOption::Universe,
@@ -288,20 +306,20 @@ impl<'a> AddColumnView<'a> {
             let source = PubkeySource::Explicit(acc.pubkey);
 
             vec.push(ColumnOptionData {
-                title: "Home timeline",
+                title: Cow::from("Home timeline"),
                 description: "See recommended notes first",
                 icon: egui::include_image!("../../assets/icons/home_icon_dark_4x.png"),
                 option: AddColumnOption::Home(source.clone()),
             });
         }
         vec.push(ColumnOptionData {
-            title: "Notifications",
+            title: Cow::from("Notifications"),
             description: "Stay up to date with notifications and mentions",
             icon: egui::include_image!("../../assets/icons/notifications_icon_dark_4x.png"),
             option: AddColumnOption::UndecidedNotification,
         });
         vec.push(ColumnOptionData {
-            title: "Hashtag",
+            title: Cow::from("Hashtag"),
             description: "Stay up to date with a certain hashtag",
             icon: egui::include_image!("../../assets/icons/notifications_icon_dark_4x.png"),
             option: AddColumnOption::UndecidedHashtag,
@@ -321,7 +339,7 @@ impl<'a> AddColumnView<'a> {
             };
 
             vec.push(ColumnOptionData {
-                title: "Your Notifications",
+                title: Cow::from("Your Notifications"),
                 description: "Stay up to date with your notifications and mentions",
                 icon: egui::include_image!("../../assets/icons/notifications_icon_dark_4x.png"),
                 option: AddColumnOption::Notification(source),
@@ -329,7 +347,7 @@ impl<'a> AddColumnView<'a> {
         }
 
         vec.push(ColumnOptionData {
-            title: "Someone else's Notifications",
+            title: Cow::from("Someone else's Notifications"),
             description: "Stay up to date with someone else's notifications and mentions",
             icon: egui::include_image!("../../assets/icons/notifications_icon_dark_4x.png"),
             option: AddColumnOption::ExternalNotification,
@@ -339,8 +357,8 @@ impl<'a> AddColumnView<'a> {
     }
 }
 
-struct ColumnOptionData {
-    title: &'static str,
+struct ColumnOptionData<'a> {
+    title: Cow<'a, str>,
     description: &'static str,
     icon: ImageSource<'static>,
     option: AddColumnOption,
@@ -356,6 +374,7 @@ pub fn render_add_column_routes(
         &mut app.view_state.id_state_map,
         &app.ndb,
         app.accounts.get_selected_account(),
+        &app.res_mgr,
     );
     let resp = match route {
         AddColumnRoute::Base => add_column_view.ui(ui),
@@ -463,6 +482,7 @@ mod preview {
                 &mut self.app.view_state.id_state_map,
                 &self.app.ndb,
                 self.app.accounts.get_selected_account(),
+                &self.app.res_mgr,
             )
             .ui(ui);
         }
