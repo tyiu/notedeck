@@ -1,1 +1,2 @@
-universe-title = Universe with Fluent Translation
+home-timeline-title = Home timeline
+universe-title = Universe

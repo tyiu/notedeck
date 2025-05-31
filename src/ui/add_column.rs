@@ -106,7 +106,7 @@ impl<'a> AddColumnView<'a> {
 
     pub fn ui(&mut self, ui: &mut Ui) -> Option<AddColumnResponse> {
         let mut selected_option: Option<AddColumnResponse> = None;
-        for column_option_data in self.get_base_options() {
+        for column_option_data in get_base_options(self.res_mgr, self.cur_account) {
             let option = column_option_data.option.clone();
             if self.column_option_ui(ui, column_option_data).clicked() {
                 selected_option = option.take_as_response(self.ndb, self.cur_account);
@@ -178,7 +178,7 @@ impl<'a> AddColumnView<'a> {
         .inner
     }
 
-    fn column_option_ui(&mut self, ui: &mut Ui, data: ColumnOptionData) -> egui::Response {
+    fn column_option_ui(&self, ui: &mut Ui, data: ColumnOptionData) -> egui::Response {
         let icon_padding = 8.0;
         let min_icon_width = 32.0;
         let height_padding = 12.0;
@@ -279,55 +279,6 @@ impl<'a> AddColumnView<'a> {
         helper.take_animation_response()
     }
 
-    fn get_base_options(&self) -> Vec<ColumnOptionData> {
-        let default_locale: LanguageIdentifier = "en-US".parse().expect("Parsing failed.");
-        let resources = vec!["notedeck.ftl".into()];
-        let bundle = self.res_mgr
-            .get_bundle(
-                vec![default_locale],
-                resources,
-            )
-            .expect("Could not get bundle");
-        let mut errors = vec![];
-        // Avoid using expect because it will panic. Unless we want it to panic.
-        let msg = bundle.get_message("universe-title").expect("Message exists");
-        let pattern = msg.value().expect("Message has a value");
-        let value = bundle.format_pattern(pattern, None, &mut errors);
-
-        let mut vec = Vec::new();
-        vec.push(ColumnOptionData {
-            title: value,
-            description: "See the whole nostr universe",
-            icon: egui::include_image!("../../assets/icons/universe_icon_dark_4x.png"),
-            option: AddColumnOption::Universe,
-        });
-
-        if let Some(acc) = self.cur_account {
-            let source = PubkeySource::Explicit(acc.pubkey);
-
-            vec.push(ColumnOptionData {
-                title: Cow::from("Home timeline"),
-                description: "See recommended notes first",
-                icon: egui::include_image!("../../assets/icons/home_icon_dark_4x.png"),
-                option: AddColumnOption::Home(source.clone()),
-            });
-        }
-        vec.push(ColumnOptionData {
-            title: Cow::from("Notifications"),
-            description: "Stay up to date with notifications and mentions",
-            icon: egui::include_image!("../../assets/icons/notifications_icon_dark_4x.png"),
-            option: AddColumnOption::UndecidedNotification,
-        });
-        vec.push(ColumnOptionData {
-            title: Cow::from("Hashtag"),
-            description: "Stay up to date with a certain hashtag",
-            icon: egui::include_image!("../../assets/icons/notifications_icon_dark_4x.png"),
-            option: AddColumnOption::UndecidedHashtag,
-        });
-
-        vec
-    }
-
     fn get_notifications_options(&self) -> Vec<ColumnOptionData> {
         let mut vec = Vec::new();
 
@@ -357,8 +308,119 @@ impl<'a> AddColumnView<'a> {
     }
 }
 
+fn get_base_options<'a>(res_mgr: &'a ResourceManager, cur_account: Option<&'a UserAccount>) -> Vec<ColumnOptionData<'a>> {
+    let default_locale: LanguageIdentifier = "en-US".parse().expect("Parsing failed.");
+    let resources = vec!["notedeck.ftl".into()];
+    let bundle = res_mgr
+        .get_bundle(
+            vec![default_locale],
+            resources,
+        )
+        .expect("Could not get bundle");
+    let mut errors = vec![];
+    // Avoid using expect because it will panic. Unless we want it to panic.
+    let msg = bundle.get_message("universe-title").expect("Message exists");
+    let pattern = msg.value().expect("Message has a value");
+    let value = bundle.format_pattern(pattern, None, &mut errors).to_string();
+
+    let mut vec = Vec::new();
+    vec.push(ColumnOptionData {
+        title: value,
+        description: "See the whole nostr universe",
+        icon: egui::include_image!("../../assets/icons/universe_icon_dark_4x.png"),
+        option: AddColumnOption::Universe,
+    });
+
+    if let Some(acc) = cur_account {
+        let source = PubkeySource::Explicit(acc.pubkey);
+
+        vec.push(ColumnOptionData {
+            title: Cow::from("Home timeline"),
+            description: "See recommended notes first",
+            icon: egui::include_image!("../../assets/icons/home_icon_dark_4x.png"),
+            option: AddColumnOption::Home(source.clone()),
+        });
+    }
+    vec.push(ColumnOptionData {
+        title: Cow::from("Notifications"),
+        description: "Stay up to date with notifications and mentions",
+        icon: egui::include_image!("../../assets/icons/notifications_icon_dark_4x.png"),
+        option: AddColumnOption::UndecidedNotification,
+    });
+    vec.push(ColumnOptionData {
+        title: Cow::from("Hashtag"),
+        description: "Stay up to date with a certain hashtag",
+        icon: egui::include_image!("../../assets/icons/notifications_icon_dark_4x.png"),
+        option: AddColumnOption::UndecidedHashtag,
+    });
+
+    vec
+}
+
+pub struct Localizer {
+    bundle: FluentBundle<FluentResource>,
+}
+
+impl Localizer {
+    pub fn new(res_mgr: &ResourceManager) -> Result<Self, Vec<ResourceManagerError>> {
+        let default_locale: LanguageIdentifier = "en-US".parse().expect("Parsing failed.");
+        let resources = vec!["notedeck.ftl".into()];
+
+        // Get owned bundle instead of borrowed
+        let bundle = res_mgr.get_owned_bundle(vec![default_locale], resources)?;
+
+        Ok(Self { bundle })
+    }
+
+    pub fn get(&self, key: &str) -> String {
+        let mut errors = vec![];
+
+        let msg = self.bundle.get_message(key)
+            .unwrap_or_else(|| panic!("Missing localization key: {}", key));
+
+        let pattern = msg.value()
+            .unwrap_or_else(|| panic!("Message has no value: {}", key));
+
+        self.bundle.format_pattern(pattern, None, &mut errors).to_string()
+    }
+
+    // Optional: method with arguments
+    pub fn get_with_args(&self, key: &str, args: &FluentArgs) -> String {
+        let mut errors = vec![];
+
+        let msg = self.bundle.get_message(key)
+            .unwrap_or_else(|| panic!("Missing localization key: {}", key));
+
+        let pattern = msg.value()
+            .unwrap_or_else(|| panic!("Message has no value: {}", key));
+
+        self.bundle.format_pattern(pattern, Some(args), &mut errors).to_string()
+    }
+}
+
+macro_rules! define_localized_strings {
+    ($(($fn_name:ident, $key:literal)),* $(,)?) => {
+        pub struct L;
+
+        impl L {
+            $(
+                pub fn $fn_name(localizer: &Localizer) -> String {
+                    localizer.get($key)
+                }
+            )*
+        }
+    };
+}
+
+define_localized_strings! {
+    (universe_title, "universe-title"),
+    (home_timeline, "home-timeline"),
+    (notifications, "notifications"),
+    (hashtag, "hashtag"),
+}
+
 struct ColumnOptionData<'a> {
-    title: Cow<'a, str>,
+    title: String,
     description: &'static str,
     icon: ImageSource<'static>,
     option: AddColumnOption,
