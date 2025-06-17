@@ -132,7 +132,10 @@ def extract_tr_plural_macros(content: str) -> Dict[str, str]:
 
 def generate_ftl_content(tr_strings: Dict[str, str], 
                         context_strings: Dict[Tuple[str, str], str], 
-                        plural_strings: Dict[str, str]) -> str:
+                        plural_strings: Dict[str, str],
+                        tr_occurrences: Dict[Tuple[str, str], list],
+                        context_occurrences: Dict[Tuple[str, str, str], list],
+                        plural_occurrences: Dict[Tuple[str, str], list]) -> str:
     """Generate FTL file content from extracted strings with comments."""
     
     lines = [
@@ -153,8 +156,22 @@ def generate_ftl_content(tr_strings: Dict[str, str],
         for string, comment in sorted_tr:
             # Skip if it's a context string (will be handled separately)
             if not any(string == base and context for (base, context), _ in context_strings.items()):
-                if comment:
+                # Collect all comments for this key from all files
+                all_comments = set()
+                for (file_path, key), occurrences in tr_occurrences.items():
+                    if key == string:
+                        for c, _ in occurrences:
+                            if c:  # Only add non-empty comments
+                                all_comments.add(c)
+                
+                # Write all unique comments
+                for c in sorted(all_comments):
+                    lines.append(f"# {c}")
+                
+                # If no comments were found, use the current comment
+                if not all_comments and comment:
                     lines.append(f"# {comment}")
+                
                 lines.append(f"{string} = {string}")
         lines.append("")
     
@@ -167,10 +184,26 @@ def generate_ftl_content(tr_strings: Dict[str, str],
                 if current_base is not None:
                     lines.append("")
                 current_base = base
-                if comment:
-                    lines.append(f"# {comment}")
-                else:
-                    lines.append(f"# {base} used as {context}")
+            
+                # Collect all comments for this context key from all files
+                all_comments = set()
+                for (file_path, b, c), occurrences in context_occurrences.items():
+                    if b == base and c == context:
+                        for cmt, _ in occurrences:
+                            if cmt:  # Only add non-empty comments
+                                all_comments.add(cmt)
+                
+                # Write all unique comments
+                for c in sorted(all_comments):
+                    lines.append(f"# {c}")
+                
+                # If no comments were found, use the current comment or default
+                if not all_comments:
+                    if comment:
+                        lines.append(f"# {comment}")
+                    else:
+                        lines.append(f"# {base} used as {context}")
+            
             lines.append(f"{base}#{context} = {base}")
         lines.append("")
     
@@ -184,10 +217,25 @@ def generate_ftl_content(tr_strings: Dict[str, str],
                 base_form = string.replace("$count ", "")
                 singular_form = base_form.replace("s ", " ", 1) if base_form.startswith("s ") else base_form
                 
-                if comment:
-                    lines.append(f"# {comment}")
-                else:
-                    lines.append(f"# {string} with pluralization")
+                # Collect all comments for this key from all files
+                all_comments = set()
+                for (file_path, key), occurrences in plural_occurrences.items():
+                    if key == string:
+                        for c, _ in occurrences:
+                            if c:  # Only add non-empty comments
+                                all_comments.add(c)
+                
+                # Write all unique comments
+                for c in sorted(all_comments):
+                    lines.append(f"# {c}")
+                
+                # If no comments were found, use the current comment or default
+                if not all_comments:
+                    if comment:
+                        lines.append(f"# {comment}")
+                    else:
+                        lines.append(f"# {string} with pluralization")
+                
                 lines.append(f'{string} = {{ $count ->')
                 lines.append(f'    [1] 1 {singular_form}')
                 lines.append(f'    *[other] {{ $count }} {base_form}')
@@ -379,7 +427,7 @@ def main():
     print(f"  Plural strings: {len(all_plural_strings)}")
     
     # Generate FTL content
-    ftl_content = generate_ftl_content(all_tr_strings, all_context_strings, all_plural_strings)
+    ftl_content = generate_ftl_content(all_tr_strings, all_context_strings, all_plural_strings, tr_occurrences, context_occurrences, plural_occurrences)
     
     if args.dry_run:
         print(f"\n--- Generated FTL content ---")
