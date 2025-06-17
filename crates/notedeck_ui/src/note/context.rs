@@ -109,9 +109,23 @@ impl NoteContextButton {
     ) -> Option<NoteContextSelection> {
         let mut context_selection: Option<NoteContextSelection> = None;
 
+        // Debug: Check if global i18n is available
+        if let Some(i18n) = notedeck::i18n::get_global_i18n() {
+            if let Ok(locale) = i18n.get_current_locale() {
+                tracing::debug!("Current locale in context menu: {}", locale);
+            }
+        } else {
+            tracing::warn!("Global i18n context not available in context menu");
+        }
+
         stationary_arbitrary_menu_button(ui, button_response, |ui| {
             ui.set_max_width(200.0);
-            if ui.button(tr!("Copy Text", "Copy the text content of the note to clipboard")).clicked() {
+            
+            // Debug: Check what the tr! macro returns
+            let copy_text = tr!("Copy Text", "Copy the text content of the note to clipboard");
+            tracing::debug!("Copy Text translation: '{}'", copy_text);
+            
+            if ui.button(copy_text).clicked() {
                 context_selection = Some(NoteContextSelection::CopyText);
                 ui.close_menu();
             }

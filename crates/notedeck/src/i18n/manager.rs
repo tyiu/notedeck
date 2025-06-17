@@ -31,9 +31,18 @@ impl LocalizationManager {
         let default_locale: LanguageIdentifier = "en-US".parse().map_err(|e| format!("Locale parse error: {e:?}"))?;
         let fallback_locale = default_locale.clone();
         
-        // For now, we'll start with just English
-        // In the future, this could be discovered from the locales directory
-        let available_locales = vec![default_locale.clone()];
+        // Check if pseudolocale is enabled via environment variable
+        let enable_pseudolocale = std::env::var("NOTEDECK_PSEUDOLOCALE").is_ok();
+        
+        // Build available locales list
+        let mut available_locales = vec![default_locale.clone()];
+        
+        // Add en-XA if pseudolocale is enabled
+        if enable_pseudolocale {
+            let pseudolocale: LanguageIdentifier = "en-XA".parse().map_err(|e| format!("Pseudolocale parse error: {e:?}"))?;
+            available_locales.push(pseudolocale);
+            tracing::info!("Pseudolocale (en-XA) enabled via NOTEDECK_PSEUDOLOCALE environment variable");
+        }
         
         Ok(Self {
             resmgr,
@@ -45,7 +54,12 @@ impl LocalizationManager {
     
     /// Gets a localized string by its ID
     pub fn get_string(&self, id: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        self.get_string_with_args(id, None)
+        tracing::debug!("Getting string '{}' for locale '{}'", id, self.get_current_locale()?);
+        let result = self.get_string_with_args(id, None);
+        if let Err(ref e) = result {
+            tracing::error!("Failed to get string '{}': {}", id, e);
+        }
+        result
     }
     
     /// Gets a localized string by its ID with optional arguments
@@ -64,15 +78,21 @@ impl LocalizationManager {
             locale
         );
         tracing::debug!("Expected path for bundle: {}", expected_path);
+        
         // Try to open the file directly
         match std::fs::File::open(&expected_path) {
             Ok(_) => tracing::info!("Direct file open succeeded: {}", expected_path),
-            Err(e) => tracing::error!("Direct file open failed: {} ({})", expected_path, e),
+            Err(e) => {
+                tracing::error!("Direct file open failed: {} ({})", expected_path, e);
+                return Err(format!("Failed to open FTL file: {}", e).into());
+            }
         }
         
         // Load the FTL file directly instead of using ResourceManager
         let ftl_string = std::fs::read_to_string(&expected_path)
             .map_err(|e| format!("Failed to read FTL file: {}", e))?;
+        
+        tracing::debug!("Successfully read FTL file, content length: {}", ftl_string.len());
         
         // Create a bundle directly from the FTL content
         let mut bundle = FluentBundle::new(vec![locale.clone()]);
@@ -81,14 +101,20 @@ impl LocalizationManager {
                 .map_err(|e| format!("Failed to parse FTL content: {:?}", e))?
         ).map_err(|e| format!("Failed to add resource to bundle: {:?}", e))?;
         
+        tracing::debug!("Successfully created bundle and added resource");
+        
         // Get the message
         let message = bundle
             .get_message(id)
             .ok_or_else(|| format!("Message not found: {}", id))?;
         
+        tracing::debug!("Successfully found message for id: {}", id);
+        
         let pattern = message
             .value()
             .ok_or_else(|| format!("Message has no value: {}", id))?;
+        
+        tracing::debug!("Successfully got pattern for id: {}", id);
         
         // Format the message
         let mut errors = Vec::new();
@@ -104,13 +130,19 @@ impl LocalizationManager {
     
     /// Sets the current locale
     pub fn set_locale(&self, locale: LanguageIdentifier) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        tracing::info!("Attempting to set locale to: {}", locale);
+        tracing::info!("Available locales: {:?}", self.available_locales);
+        
         // Validate that the locale is available
         if !self.available_locales.contains(&locale) {
+            tracing::error!("Locale {} is not available. Available locales: {:?}", locale, self.available_locales);
             return Err(format!("Locale {} is not available", locale).into());
         }
         
         let mut current = self.current_locale.write().map_err(|e| format!("Lock error: {e}"))?;
-        *current = locale;
+        tracing::info!("Switching locale from {} to {}", *current, locale);
+        *current = locale.clone();
+        tracing::info!("Successfully set locale to: {}", locale);
         Ok(())
     }
     
@@ -153,7 +185,26 @@ pub struct LocalizationContext {
 impl LocalizationContext {
     /// Creates a new LocalizationContext
     pub fn new(manager: Arc<LocalizationManager>) -> Self {
-        Self { manager }
+        let context = Self { manager };
+        
+        // Auto-switch to pseudolocale if environment variable is set
+        if std::env::var("NOTEDECK_PSEUDOLOCALE").is_ok() {
+            tracing::info!("NOTEDECK_PSEUDOLOCALE environment variable detected");
+            if let Ok(pseudolocale) = "en-XA".parse::<LanguageIdentifier>() {
+                tracing::info!("Attempting to switch to pseudolocale: {}", pseudolocale);
+                if let Err(e) = context.set_locale(pseudolocale) {
+                    tracing::warn!("Failed to switch to pseudolocale: {}", e);
+                } else {
+                    tracing::info!("Automatically switched to pseudolocale (en-XA)");
+                }
+            } else {
+                tracing::error!("Failed to parse en-XA as LanguageIdentifier");
+            }
+        } else {
+            tracing::info!("NOTEDECK_PSEUDOLOCALE environment variable not set");
+        }
+        
+        context
     }
     
     /// Gets a localized string by its ID

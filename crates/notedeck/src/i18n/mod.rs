@@ -17,6 +17,7 @@ pub use unic_langid::LanguageIdentifier;
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
 use tracing::info;
+use regex::Regex;
 
 /// Global localization context for easy access from anywhere
 static GLOBAL_I18N: OnceCell<Arc<LocalizationContext>> = OnceCell::new();
@@ -33,6 +34,19 @@ pub fn get_global_i18n() -> Option<Arc<LocalizationContext>> {
     GLOBAL_I18N.get().cloned()
 }
 
+pub fn normalize_ftl_key(key: &str) -> String {
+    // Replace all invalid characters with underscores
+    let re = Regex::new(r"[^a-zA-Z0-9_-]").unwrap();
+    let mut result = re.replace_all(key, "_").to_string();
+    
+    // Ensure the key doesn't start with an underscore (Fluent requirement)
+    if result.starts_with('_') {
+        result = format!("key{}", result);
+    }
+    
+    result
+}
+
 /// Macro for getting localized strings
 /// Uses the English string as the key and falls back to the English text if no translation is found
 /// Optional comment parameter provides context for translators
@@ -40,19 +54,37 @@ pub fn get_global_i18n() -> Option<Arc<LocalizationContext>> {
 macro_rules! tr {
     ($key:expr) => {
         {
+            let norm_key = $crate::i18n::normalize_ftl_key($key);
             if let Some(i18n) = $crate::i18n::get_global_i18n() {
-                i18n.get_string($key).unwrap_or_else(|| $key.to_string())
+                let result = i18n.get_string(&norm_key);
+                match result {
+                    Some(ref s) if s != $key => s.clone(),
+                    _ => {
+                        tracing::warn!("FALLBACK: Using key '{}' as string (not found in FTL)", $key);
+                        $key.to_string()
+                    }
+                }
             } else {
-                $key.to_string() // Fallback to English text if i18n not initialized
+                tracing::warn!("FALLBACK: Global i18n not initialized, using key '{}' as string", $key);
+                $key.to_string()
             }
         }
     };
     ($key:expr, $comment:expr) => {
         {
+            let norm_key = $crate::i18n::normalize_ftl_key($key);
             if let Some(i18n) = $crate::i18n::get_global_i18n() {
-                i18n.get_string($key).unwrap_or_else(|| $key.to_string())
+                let result = i18n.get_string(&norm_key);
+                match result {
+                    Some(ref s) if s != $key => s.clone(),
+                    _ => {
+                        tracing::warn!("FALLBACK: Using key '{}' as string (not found in FTL)", $key);
+                        $key.to_string()
+                    }
+                }
             } else {
-                $key.to_string() // Fallback to English text if i18n not initialized
+                tracing::warn!("FALLBACK: Global i18n not initialized, using key '{}' as string", $key);
+                $key.to_string()
             }
         }
     };
@@ -65,12 +97,13 @@ macro_rules! tr {
 macro_rules! tr_with_context {
     ($key:expr, $($param:expr => $value:expr),*) => {
         {
+            let norm_key = $crate::i18n::normalize_ftl_key($key);
             if let Some(i18n) = $crate::i18n::get_global_i18n() {
                 let mut args = $crate::i18n::FluentArgs::new();
                 $(
                     args.set($param, $value);
                 )*
-                i18n.get_string_with_args($key, Some(&args))
+                i18n.get_string_with_args(&norm_key, Some(&args))
             } else {
                 // Fallback: replace placeholders with values
                 let mut result = $key.to_string();
@@ -84,8 +117,9 @@ macro_rules! tr_with_context {
     ($key:expr, $context:expr) => {
         {
             let context_key = format!("{}#{}", $key, $context);
+            let norm_key = $crate::i18n::normalize_ftl_key(&context_key);
             if let Some(i18n) = $crate::i18n::get_global_i18n() {
-                i18n.get_string(&context_key).unwrap_or_else(|| $key.to_string())
+                i18n.get_string(&norm_key).unwrap_or($key.to_string())
             } else {
                 $key.to_string() // Fallback to English text if i18n not initialized
             }
@@ -94,8 +128,9 @@ macro_rules! tr_with_context {
     ($key:expr, $context:expr, $comment:expr) => {
         {
             let context_key = format!("{}#{}", $key, $context);
+            let norm_key = $crate::i18n::normalize_ftl_key(&context_key);
             if let Some(i18n) = $crate::i18n::get_global_i18n() {
-                i18n.get_string(&context_key).unwrap_or_else(|| $key.to_string())
+                i18n.get_string(&norm_key).unwrap_or($key.to_string())
             } else {
                 $key.to_string() // Fallback to English text if i18n not initialized
             }

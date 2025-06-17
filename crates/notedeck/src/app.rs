@@ -333,5 +333,18 @@ impl Notedeck {
             Ok(_) => info!("Successfully copied main.ftl to {}", en_us_dir.display()),
             Err(e) => error!("Failed to copy main.ftl: {}", e),
         }
+        
+        // Check if pseudolocale is enabled and copy en-XA files
+        if std::env::var("NOTEDECK_PSEUDOLOCALE").is_ok() {
+            let en_xa_dir = dir.join("en-XA");
+            let _ = std::fs::create_dir_all(&en_xa_dir);
+            
+            // Copy the en-XA main.ftl file
+            let en_xa_ftl_content = include_str!("i18n/locales/en-XA/main.ftl");
+            match std::fs::write(en_xa_dir.join("main.ftl"), en_xa_ftl_content) {
+                Ok(_) => info!("Successfully copied en-XA main.ftl to {}", en_xa_dir.display()),
+                Err(e) => error!("Failed to copy en-XA main.ftl: {}", e),
+            }
+        }
     }
 }

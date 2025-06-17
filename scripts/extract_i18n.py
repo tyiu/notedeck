@@ -29,16 +29,25 @@ def find_rust_files(project_root: Path) -> List[Path]:
 
 def extract_tr_macros_with_lines(content: str, file_path: str) -> Dict[str, list]:
     """Extract tr! macro calls from Rust code with optional comments and line numbers."""
-    tr_pattern = r'tr!\s*\(\s*["\']([^"\']{1,100})["\'](?:\s*,\s*["\']([^"\']{1,200})["\'])?\s*\)'
     matches = []
-    for i, line in enumerate(content.splitlines(), 1):
-        for m in re.finditer(tr_pattern, line):
-            key = m.group(1)
-            comment = m.group(2) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
-            if not any(skip in key.lower() for skip in [
-                '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@',
-                'crates/', 'src/', 'target/', 'build.rs']):
-                matches.append((key, comment, i, file_path))
+    
+    # Find all tr! macro calls using regex to get the full macro content
+    tr_pattern = r'tr!\s*\(([^)]*)\)'
+    
+    lines = content.split('\n')
+    for line_num, line in enumerate(lines, 1):
+        for match in re.findall(tr_pattern, line):
+            # Parse the arguments from the macro content
+            args = parse_macro_arguments(match)
+            if len(args) >= 1:
+                key = args[0].strip()
+                comment = args[1].strip() if len(args) > 1 else ""
+                
+                if not any(skip in key.lower() for skip in [
+                    '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@',
+                    'crates/', 'src/', 'target/', 'build.rs']):
+                    matches.append((key, comment, line_num, file_path))
+    
     return matches
 
 def extract_tr_with_context_macros_with_lines(content: str, file_path: str) -> Dict[Tuple[str, str], list]:
@@ -61,8 +70,8 @@ def extract_tr_with_context_macros_with_lines(content: str, file_path: str) -> D
     filtered_matches = {}
     for line_num, line in enumerate(content.split('\n'), 1):
         for match in all_matches:
-            base = match[0]
-            context = match[1]
+            base = match[0].strip()  # Strip leading/trailing whitespace
+            context = match[1].strip()  # Strip leading/trailing whitespace
             comment = match[2] if len(match) > 2 and match[2] else ""
             
             if not any(skip in base.lower() for skip in [
@@ -80,7 +89,7 @@ def extract_tr_plural_macros_with_lines(content: str, file_path: str) -> Dict[st
     matches = []
     for i, line in enumerate(content.splitlines(), 1):
         for m in re.finditer(tr_plural_pattern, line):
-            key = m.group(1)
+            key = m.group(1).strip()  # Strip leading/trailing whitespace
             comment = m.group(2) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
             if not any(skip in key.lower() for skip in [
                 '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@',
@@ -88,24 +97,82 @@ def extract_tr_plural_macros_with_lines(content: str, file_path: str) -> Dict[st
                 matches.append((key, comment, i, file_path))
     return matches
 
+def parse_macro_arguments(content: str) -> List[str]:
+    """Parse macro arguments, handling quoted strings with apostrophes and escaped quotes."""
+    args = []
+    i = 0
+    content = content.strip()
+    
+    while i < len(content):
+        # Skip whitespace
+        while i < len(content) and content[i].isspace():
+            i += 1
+        
+        if i >= len(content):
+            break
+            
+        # Check if we're at a quoted string
+        if content[i] in ['"', "'"]:
+            quote_char = content[i]
+            i += 1  # Skip the opening quote
+            current_arg = ""
+            
+            # Read until the closing quote
+            while i < len(content):
+                char = content[i]
+                if char == quote_char:
+                    # Check if it's escaped
+                    if i > 0 and content[i-1] == '\\':
+                        current_arg = current_arg[:-1] + char  # Remove backslash, add quote
+                    else:
+                        i += 1  # Skip the closing quote
+                        break
+                else:
+                    current_arg += char
+                i += 1
+            
+            args.append(current_arg)
+        else:
+            # Non-quoted argument - read until comma or end
+            current_arg = ""
+            while i < len(content):
+                char = content[i]
+                if char == ',':
+                    i += 1  # Skip the comma
+                    break
+                elif char.isspace():
+                    i += 1
+                else:
+                    current_arg += char
+                    i += 1
+            
+            if current_arg.strip():
+                args.append(current_arg.strip())
+    
+    return args
+
 def extract_tr_macros(content: str) -> Dict[str, str]:
     """Extract tr! macro calls from Rust code with optional comments."""
-    # Pattern for tr!("string") or tr!("string", "comment")
-    tr_pattern = r'tr!\s*\(\s*["\']([^"\']{1,100})["\'](?:\s*,\s*["\']([^"\']{1,200})["\'])?\s*\)'
+    # Use a more robust approach to handle apostrophes and escaped quotes
+    filtered_matches = {}
+    
+    # Find all tr! macro calls using regex to get the full macro content
+    tr_pattern = r'tr!\s*\(([^)]*)\)'
     matches = re.findall(tr_pattern, content)
     
-    # Filter out obvious false positives and collect with comments
-    filtered_matches = {}
     for match in matches:
-        key = match[0]
-        comment = match[1] if len(match) > 1 and match[1] else ""
-        
-        # Skip file paths, URLs, and other non-UI strings
-        if not any(skip in key.lower() for skip in [
-            '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@', 
-            'crates/', 'src/', 'target/', 'build.rs'
-        ]):
-            filtered_matches[key] = comment
+        # Parse the arguments from the macro content
+        args = parse_macro_arguments(match)
+        if len(args) >= 1:
+            key = args[0].strip()
+            comment = args[1].strip() if len(args) > 1 else ""
+            
+            # Skip file paths, URLs, and other non-UI strings
+            if not any(skip in key.lower() for skip in [
+                '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@', 
+                'crates/', 'src/', 'target/', 'build.rs'
+            ]):
+                filtered_matches[key] = comment
     
     return filtered_matches
 
@@ -124,8 +191,8 @@ def extract_tr_with_context_macros(content: str) -> Dict[Tuple[str, str], str]:
     # Filter out obvious false positives and collect with comments
     filtered_matches = {}
     for match in matches:
-        base = match[0]
-        context = match[1]
+        base = match[0].strip()  # Strip leading/trailing whitespace
+        context = match[1].strip()  # Strip leading/trailing whitespace
         comment = match[2] if len(match) > 2 and match[2] else ""
         
         if not any(skip in base.lower() for skip in [
@@ -136,8 +203,8 @@ def extract_tr_with_context_macros(content: str) -> Dict[Tuple[str, str], str]:
     
     # Handle new syntax matches
     for match in new_matches:
-        base = match[0]
-        context = match[1]
+        base = match[0].strip()  # Strip leading/trailing whitespace
+        context = match[1].strip()  # Strip leading/trailing whitespace
         comment = ""  # No comment in new syntax
         
         if not any(skip in base.lower() for skip in [
@@ -157,7 +224,7 @@ def extract_tr_plural_macros(content: str) -> Dict[str, str]:
     # Filter out obvious false positives and collect with comments
     filtered_matches = {}
     for match in matches:
-        key = match[0]
+        key = match[0].strip()  # Strip leading/trailing whitespace
         comment = match[1] if len(match) > 1 and match[1] else ""
         
         if not any(skip in key.lower() for skip in [
@@ -168,12 +235,45 @@ def extract_tr_plural_macros(content: str) -> Dict[str, str]:
     
     return filtered_matches
 
+def normalize_ftl_key(key: str) -> str:
+    """Normalize a string to a valid FTL key: only letters, digits, hyphens, and underscores."""
+    # Replace all invalid characters with underscores
+    normalized = re.sub(r'[^a-zA-Z0-9_-]', '_', key)
+    # If the key starts with an underscore, prefix it with "key"
+    if normalized.startswith('_'):
+        normalized = "key" + normalized
+    return normalized
+
+def pseudolocalize(text: str) -> str:
+    """Convert English text to pseudolocalized text for testing."""
+    # Common pseudolocalization patterns
+    replacements = {
+        'a': 'à', 'e': 'é', 'i': 'í', 'o': 'ó', 'u': 'ú',
+        'A': 'À', 'E': 'É', 'I': 'Í', 'O': 'Ó', 'U': 'Ú',
+        'n': 'ñ', 'N': 'Ñ', 'c': 'ç', 'C': 'Ç'
+    }
+    
+    # Apply character replacements
+    result = text
+    for char, replacement in replacements.items():
+        result = result.replace(char, replacement)
+    
+    # Add brackets around the text to make it more obvious
+    result = f"[{result}]"
+    
+    # Expand short strings by repeating them
+    if len(result) < 10:
+        result = result * 2
+    
+    return result
+
 def generate_ftl_content(tr_strings: Dict[str, str], 
                         context_strings: Dict[Tuple[str, str], str], 
                         plural_strings: Dict[str, str],
                         tr_occurrences: Dict[Tuple[str, str], list],
                         context_occurrences: Dict[Tuple[str, str, str], list],
-                        plural_occurrences: Dict[Tuple[str, str], list]) -> str:
+                        plural_occurrences: Dict[Tuple[str, str], list],
+                        pseudolocalize_content: bool = False) -> str:
     """Generate FTL file content from extracted strings with comments."""
     
     lines = [
@@ -198,19 +298,15 @@ def generate_ftl_content(tr_strings: Dict[str, str],
                 all_comments = set()
                 for (file_path, key), occurrences in tr_occurrences.items():
                     if key == string:
-                        for c, _ in occurrences:
-                            if c:  # Only add non-empty comments
-                                all_comments.add(c)
-                
-                # Write all unique comments
-                for c in sorted(all_comments):
+                        for comment, line in occurrences:
+                            if comment:
+                                all_comments.add(comment)
+                for c in all_comments:
                     lines.append(f"# {c}")
-                
-                # If no comments were found, use the current comment
-                if not all_comments and comment:
-                    lines.append(f"# {comment}")
-                
-                lines.append(f"{string} = {string}")
+                norm_key = normalize_ftl_key(string)
+                # Apply pseudolocalization if requested
+                value = pseudolocalize(string) if pseudolocalize_content else string
+                lines.append(f"{norm_key} = {value}")
         lines.append("")
     
     # Add context-aware strings
@@ -242,7 +338,10 @@ def generate_ftl_content(tr_strings: Dict[str, str],
                     else:
                         lines.append(f"# {base} used as {context}")
             
-            lines.append(f"{base}#{context} = {base}")
+            norm_key = normalize_ftl_key(f"{base}#{context}")
+            # Apply pseudolocalization if requested
+            value = pseudolocalize(base) if pseudolocalize_content else base
+            lines.append(f"{norm_key} = {value}")
         lines.append("")
     
     # Add pluralized strings
@@ -274,7 +373,13 @@ def generate_ftl_content(tr_strings: Dict[str, str],
                     else:
                         lines.append(f"# {string} with pluralization")
                 
-                lines.append(f'{string} = {{ $count ->')
+                norm_key = normalize_ftl_key(string)
+                # Apply pseudolocalization if requested
+                if pseudolocalize_content:
+                    base_form = pseudolocalize(base_form)
+                    singular_form = pseudolocalize(singular_form)
+                
+                lines.append(f'{norm_key} = {{ $count ->')
                 lines.append(f'    [1] 1 {singular_form}')
                 lines.append(f'    *[other] {{ $count }} {base_form}')
                 lines.append(f'}}')
@@ -298,7 +403,8 @@ def read_existing_ftl(ftl_path: Path) -> Dict[str, str]:
         if match:
             key = match.group(1).strip()
             value = match.group(2).strip()
-            existing_translations[key] = value
+            norm_key = normalize_ftl_key(key)
+            existing_translations[norm_key] = value
     
     return existing_translations
 
@@ -313,6 +419,8 @@ def main():
                        help='Show what would be generated without writing to file')
     parser.add_argument('--fail-on-collisions', action='store_true',
                        help='Exit with error if key collisions are detected')
+    parser.add_argument('--pseudolocalize', action='store_true',
+                       help='Generate pseudolocalized content for testing')
     
     args = parser.parse_args()
     
@@ -350,8 +458,9 @@ def main():
             for key, comment, line, file_path in tr_lines:
                 tr_occurrences[(file_path, key)].append((comment, line))
             context_lines = extract_tr_with_context_macros_with_lines(content, str(rust_file))
-            for (base, context), comment, line, file_path in context_lines:
-                context_occurrences[(file_path, base, context)].append((comment, line))
+            for (base, context), occurrences in context_lines.items():
+                for comment, line_info in occurrences:
+                    context_occurrences[(file_path, base, context)].append((comment, line_info))
             plural_lines = extract_tr_plural_macros_with_lines(content, str(rust_file))
             for key, comment, line, file_path in plural_lines:
                 plural_occurrences[(file_path, key)].append((comment, line))
@@ -465,7 +574,7 @@ def main():
     print(f"  Plural strings: {len(all_plural_strings)}")
     
     # Generate FTL content
-    ftl_content = generate_ftl_content(all_tr_strings, all_context_strings, all_plural_strings, tr_occurrences, context_occurrences, plural_occurrences)
+    ftl_content = generate_ftl_content(all_tr_strings, all_context_strings, all_plural_strings, tr_occurrences, context_occurrences, plural_occurrences, args.pseudolocalize)
     
     if args.dry_run:
         print(f"\n--- Generated FTL content ---")
