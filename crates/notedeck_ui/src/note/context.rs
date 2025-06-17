@@ -111,29 +111,29 @@ impl NoteContextButton {
 
         stationary_arbitrary_menu_button(ui, button_response, |ui| {
             ui.set_max_width(200.0);
-            if ui.button(tr!("action-copy-text")).clicked() {
+            if ui.button(tr!("Copy Text")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyText);
                 ui.close_menu();
             }
-            if ui.button(tr!("action-copy-pubkey")).clicked() {
+            if ui.button(tr!("Copy Pubkey")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyPubkey);
                 ui.close_menu();
             }
-            if ui.button(tr!("action-copy-note-id")).clicked() {
+            if ui.button(tr!("Copy Note ID")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyNoteId);
                 ui.close_menu();
             }
-            if ui.button(tr!("action-copy-note-json")).clicked() {
+            if ui.button(tr!("Copy Note JSON")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyNoteJSON);
                 ui.close_menu();
             }
-            if ui.button(tr!("action-broadcast")).clicked() {
+            if ui.button(tr!("Broadcast")).clicked() {
                 context_selection = Some(NoteContextSelection::Broadcast(
                     BroadcastContext::Everywhere,
                 ));
                 ui.close_menu();
             }
-            if ui.button(tr!("action-broadcast-local")).clicked() {
+            if ui.button(tr!("Broadcast Local")).clicked() {
                 context_selection = Some(NoteContextSelection::Broadcast(
                     BroadcastContext::LocalNetwork,
                 ));

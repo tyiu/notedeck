@@ -157,10 +157,10 @@ impl LocalizationContext {
     }
     
     /// Gets a localized string by its ID
-    pub fn get_string(&self, id: &str) -> String {
+    pub fn get_string(&self, id: &str) -> Option<String> {
         self.manager
             .get_string(id)
-            .unwrap_or_else(|_| format!("[MISSING: {}]", id))
+            .ok()
     }
     
     /// Gets a localized string by its ID with optional arguments
@@ -197,7 +197,7 @@ pub trait Localizable {
 
 impl Localizable for LocalizationContext {
     fn get_localized_string(&self, id: &str) -> String {
-        self.get_string(id)
+        self.get_string(id).unwrap_or_else(|| format!("[MISSING: {}]", id))
     }
     
     fn get_localized_string_with_args(&self, id: &str, args: Option<&FluentArgs>) -> String {

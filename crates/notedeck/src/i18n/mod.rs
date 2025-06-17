@@ -33,35 +33,16 @@ pub fn get_global_i18n() -> Option<Arc<LocalizationContext>> {
     GLOBAL_I18N.get().cloned()
 }
 
-/// Helper macro for easier string localization
-/// 
-/// Usage:
-/// ```rust
-/// // Simple string lookup
-/// let text = tr!("action-reply-note");
-/// 
-/// // String with arguments
-/// let text = tr!("welcome-message", &FluentArgs::from_iter([
-///     ("name", "John".into())
-/// ]));
-/// ```
+/// Macro for getting localized strings
+/// Uses the English string as the key and falls back to the English text if no translation is found
 #[macro_export]
 macro_rules! tr {
-    ($id:expr) => {
+    ($key:expr) => {
         {
-            if let Some(i18n) = notedeck::get_global_i18n() {
-                i18n.get_localized_string($id)
+            if let Some(i18n) = $crate::i18n::get_global_i18n() {
+                i18n.get_string($key).unwrap_or_else(|| $key.to_string())
             } else {
-                format!("[MISSING: {}]", $id)
-            }
-        }
-    };
-    ($id:expr, $args:expr) => {
-        {
-            if let Some(i18n) = notedeck::get_global_i18n() {
-                i18n.get_localized_string_with_args($id, Some($args))
-            } else {
-                format!("[MISSING: {}]", $id)
+                $key.to_string() // Fallback to English text if i18n not initialized
             }
         }
     };
