@@ -12,10 +12,4 @@ Copy Note ID = Copy Note ID
 # Copy the raw note data in JSON format to clipboard
 Copy Note JSON = Copy Note JSON
 # Copy the text content of the note to clipboard
-# Different comment for the same key
-# Test collision from mod.rs
 Copy Text = Copy Text
-
-# Context-specific translations
-# Action to publish a new message
-Post#verb = Post

@@ -16,7 +16,7 @@ pub use unic_langid::LanguageIdentifier;
 
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
-use tracing::{info, debug};
+use tracing::info;
 
 /// Global localization context for easy access from anywhere
 static GLOBAL_I18N: OnceCell<Arc<LocalizationContext>> = OnceCell::new();

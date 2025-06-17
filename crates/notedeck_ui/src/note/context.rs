@@ -1,6 +1,6 @@
 use egui::{Rect, Vec2};
 use nostrdb::NoteKey;
-use notedeck::{BroadcastContext, NoteContextSelection, tr, Localizable};
+use notedeck::{BroadcastContext, NoteContextSelection, tr, tr_with_context};
 
 pub struct NoteContextButton {
     put_at: Option<Rect>,
@@ -138,16 +138,6 @@ impl NoteContextButton {
                     BroadcastContext::LocalNetwork,
                 ));
                 ui.close_menu();
-            }
-            
-            // Example of context-aware translation
-            if ui.button(tr_with_context!("Post", "verb", "Action to publish a new message")).clicked() {
-                // Post action logic
-            }
-            
-            // Test collision detection - same key, different comment
-            if ui.button(tr!("Copy Text", "Different comment for the same key")).clicked() {
-                // This will cause a collision with the existing "Copy Text" above
             }
         });
 
