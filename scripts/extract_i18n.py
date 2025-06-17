@@ -183,6 +183,8 @@ def main():
                        help='Output FTL file path')
     parser.add_argument('--dry-run', action='store_true',
                        help='Show what would be generated without writing to file')
+    parser.add_argument('--fail-on-collisions', action='store_true',
+                       help='Exit with error if key collisions are detected')
     
     args = parser.parse_args()
     
@@ -200,6 +202,11 @@ def main():
     all_context_strings = {}
     all_plural_strings = {}
     
+    # Track collisions
+    tr_collisions = {}
+    context_collisions = {}
+    plural_collisions = {}
+    
     for rust_file in rust_files:
         try:
             with open(rust_file, 'r', encoding='utf-8') as f:
@@ -212,12 +219,71 @@ def main():
             if tr_strings or context_strings or plural_strings:
                 print(f"  {rust_file}: {len(tr_strings)} tr!, {len(context_strings)} tr_with_context!, {len(plural_strings)} tr_plural!")
             
-            all_tr_strings.update(tr_strings)
-            all_context_strings.update(context_strings)
-            all_plural_strings.update(plural_strings)
+            # Check for collisions in tr! strings
+            for key, comment in tr_strings.items():
+                if key in all_tr_strings and all_tr_strings[key] != comment:
+                    if key not in tr_collisions:
+                        tr_collisions[key] = []
+                    tr_collisions[key].append((rust_file, all_tr_strings[key]))
+                    tr_collisions[key].append((rust_file, comment))
+                all_tr_strings[key] = comment
+            
+            # Check for collisions in context strings
+            for (base, context), comment in context_strings.items():
+                if (base, context) in all_context_strings and all_context_strings[(base, context)] != comment:
+                    if (base, context) not in context_collisions:
+                        context_collisions[(base, context)] = []
+                    context_collisions[(base, context)].append((rust_file, all_context_strings[(base, context)]))
+                    context_collisions[(base, context)].append((rust_file, comment))
+                all_context_strings[(base, context)] = comment
+            
+            # Check for collisions in plural strings
+            for key, comment in plural_strings.items():
+                if key in all_plural_strings and all_plural_strings[key] != comment:
+                    if key not in plural_collisions:
+                        plural_collisions[key] = []
+                    plural_collisions[key].append((rust_file, all_plural_strings[key]))
+                    plural_collisions[key].append((rust_file, comment))
+                all_plural_strings[key] = comment
             
         except Exception as e:
             print(f"Error reading {rust_file}: {e}")
+    
+    # Report collisions
+    has_collisions = False
+    
+    if tr_collisions:
+        has_collisions = True
+        print(f"\n⚠️  Key collisions detected in tr! strings:")
+        for key, collisions in tr_collisions.items():
+            print(f"  '{key}':")
+            for file_path, comment in collisions:
+                comment_text = f" (comment: '{comment}')" if comment else " (no comment)"
+                print(f"    {file_path}{comment_text}")
+    
+    if context_collisions:
+        has_collisions = True
+        print(f"\n⚠️  Key collisions detected in tr_with_context! strings:")
+        for (base, context), collisions in context_collisions.items():
+            print(f"  '{base}#{context}':")
+            for file_path, comment in collisions:
+                comment_text = f" (comment: '{comment}')" if comment else " (no comment)"
+                print(f"    {file_path}{comment_text}")
+    
+    if plural_collisions:
+        has_collisions = True
+        print(f"\n⚠️  Key collisions detected in tr_plural! strings:")
+        for key, collisions in plural_collisions.items():
+            print(f"  '{key}':")
+            for file_path, comment in collisions:
+                comment_text = f" (comment: '{comment}')" if comment else " (no comment)"
+                print(f"    {file_path}{comment_text}")
+    
+    if has_collisions:
+        print(f"\n💡 Collision resolution: The last occurrence of each key will be used.")
+        if args.fail_on_collisions:
+            print(f"❌ Exiting due to key collisions (--fail-on-collisions flag)")
+            exit(1)
     
     print(f"\nExtracted strings:")
     print(f"  Regular strings: {len(all_tr_strings)}")

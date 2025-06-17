@@ -879,3 +879,8 @@ fn zap_button(state: AnyZapState, noteid: &[u8; 32]) -> impl egui::Widget + use<
         resp.union(put_resp)
     }
 }
+
+pub fn test_collision() {
+    // This should collide with the "Copy Text" in context.rs
+    let _ = tr!("Copy Text", "Test collision from mod.rs");
+}
