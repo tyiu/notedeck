@@ -6,6 +6,7 @@ use nostrdb::{Ndb, Transaction};
 use notedeck::{
     filter::{self, default_limit},
     FilterError, FilterState, NoteCache, RootIdError, RootNoteIdBuf,
+    tr,
 };
 use notedeck_ui::contacts::contacts_filter;
 use serde::{Deserialize, Serialize};
@@ -259,15 +260,15 @@ impl AlgoTimeline {
 impl Display for TimelineKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TimelineKind::List(ListKind::Contact(_src)) => f.write_str("Contacts"),
-            TimelineKind::Algo(AlgoTimeline::LastPerPubkey(_lk)) => f.write_str("Last Notes"),
-            TimelineKind::Generic(_) => f.write_str("Timeline"),
-            TimelineKind::Notifications(_) => f.write_str("Notifications"),
-            TimelineKind::Profile(_) => f.write_str("Profile"),
-            TimelineKind::Universe => f.write_str("Universe"),
-            TimelineKind::Hashtag(_) => f.write_str("Hashtag"),
-            TimelineKind::Thread(_) => f.write_str("Thread"),
-            TimelineKind::Search(_) => f.write_str("Search"),
+            TimelineKind::List(ListKind::Contact(_src)) => write!(f, "{}", tr!("Contacts")),
+            TimelineKind::Algo(AlgoTimeline::LastPerPubkey(_lk)) => write!(f, "{}", tr!("Last Notes")),
+            TimelineKind::Generic(_) => write!(f, "{}", tr!("Timeline")),
+            TimelineKind::Notifications(_) => write!(f, "{}", tr!("Notifications")),
+            TimelineKind::Profile(_) => write!(f, "{}", tr!("Profile")),
+            TimelineKind::Universe => write!(f, "{}", tr!("Universe")),
+            TimelineKind::Hashtag(_) => write!(f, "{}", tr!("Hashtag")),
+            TimelineKind::Thread(_) => write!(f, "{}", tr!("Thread")),
+            TimelineKind::Search(_) => write!(f, "{}", tr!("Search")),
         }
     }
 }

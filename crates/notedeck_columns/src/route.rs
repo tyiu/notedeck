@@ -1,5 +1,5 @@
 use enostr::{NoteId, Pubkey};
-use notedeck::{NoteZapTargetOwned, WalletType};
+use notedeck::{NoteZapTargetOwned, tr, WalletType};
 use std::fmt::{self};
 
 use crate::{
@@ -203,41 +203,41 @@ impl Route {
     pub fn title(&self) -> ColumnTitle<'_> {
         match self {
             Route::Timeline(kind) => kind.to_title(),
-            Route::Reply(_id) => ColumnTitle::simple("Reply"),
-            Route::Quote(_id) => ColumnTitle::simple("Quote"),
-            Route::Relays => ColumnTitle::simple("Relays"),
+            Route::Reply(_id) => ColumnTitle::formatted(tr!("Reply")),
+            Route::Quote(_id) => ColumnTitle::formatted(tr!("Quote")),
+            Route::Relays => ColumnTitle::formatted(tr!("Relays")),
             Route::Accounts(amr) => match amr {
-                AccountsRoute::Accounts => ColumnTitle::simple("Accounts"),
-                AccountsRoute::AddAccount => ColumnTitle::simple("Add Account"),
+                AccountsRoute::Accounts => ColumnTitle::formatted(tr!("Accounts")),
+                AccountsRoute::AddAccount => ColumnTitle::formatted(tr!("Add Account")),
             },
-            Route::ComposeNote => ColumnTitle::simple("Compose Note"),
+            Route::ComposeNote => ColumnTitle::formatted(tr!("Compose Note")),
             Route::AddColumn(c) => match c {
-                AddColumnRoute::Base => ColumnTitle::simple("Add Column"),
+                AddColumnRoute::Base => ColumnTitle::formatted(tr!("Add Column")),
                 AddColumnRoute::Algo(r) => match r {
-                    AddAlgoRoute::Base => ColumnTitle::simple("Add Algo Column"),
-                    AddAlgoRoute::LastPerPubkey => ColumnTitle::simple("Add Last Notes Column"),
+                    AddAlgoRoute::Base => ColumnTitle::formatted(tr!("Add Algo Column")),
+                    AddAlgoRoute::LastPerPubkey => ColumnTitle::formatted(tr!("Add Last Notes Column")),
                 },
                 AddColumnRoute::UndecidedNotification => {
-                    ColumnTitle::simple("Add Notifications Column")
+                    ColumnTitle::formatted(tr!("Add Notifications Column"))
                 }
                 AddColumnRoute::ExternalNotification => {
-                    ColumnTitle::simple("Add External Notifications Column")
+                    ColumnTitle::formatted(tr!("Add External Notifications Column"))
                 }
-                AddColumnRoute::Hashtag => ColumnTitle::simple("Add Hashtag Column"),
+                AddColumnRoute::Hashtag => ColumnTitle::formatted(tr!("Add Hashtag Column")),
                 AddColumnRoute::UndecidedIndividual => {
-                    ColumnTitle::simple("Subscribe to someone's notes")
+                    ColumnTitle::formatted(tr!("Subscribe to someone's notes"))
                 }
                 AddColumnRoute::ExternalIndividual => {
-                    ColumnTitle::simple("Subscribe to someone else's notes")
+                    ColumnTitle::formatted(tr!("Subscribe to someone else's notes"))
                 }
             },
-            Route::Support => ColumnTitle::simple("Damus Support"),
-            Route::NewDeck => ColumnTitle::simple("Add Deck"),
-            Route::EditDeck(_) => ColumnTitle::simple("Edit Deck"),
-            Route::EditProfile(_) => ColumnTitle::simple("Edit Profile"),
-            Route::Search => ColumnTitle::simple("Search"),
-            Route::Wallet(_) => ColumnTitle::simple("Wallet"),
-            Route::CustomizeZapAmount(_) => ColumnTitle::simple("Customize Zap Amount"),
+            Route::Support => ColumnTitle::formatted(tr!("Damus Support")),
+            Route::NewDeck => ColumnTitle::formatted(tr!("Add Deck")),
+            Route::EditDeck(_) => ColumnTitle::formatted(tr!("Edit Deck")),
+            Route::EditProfile(_) => ColumnTitle::formatted(tr!("Edit Profile")),
+            Route::Search => ColumnTitle::formatted(tr!("Search")),
+            Route::Wallet(_) => ColumnTitle::formatted(tr!("Wallet")),
+            Route::CustomizeZapAmount(_) => ColumnTitle::formatted(tr!("Customize Zap Amount")),
         }
     }
 }
@@ -330,34 +330,34 @@ impl fmt::Display for Route {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Route::Timeline(kind) => match kind {
-                TimelineKind::List(ListKind::Contact(_pk)) => write!(f, "Contacts"),
+                TimelineKind::List(ListKind::Contact(_pk)) => write!(f, "{}", tr!("Contacts")),
                 TimelineKind::Algo(AlgoTimeline::LastPerPubkey(ListKind::Contact(_))) => {
-                    write!(f, "Last Per Pubkey (Contact)")
+                    write!(f, "{}", tr!("Last Per Pubkey (Contact)"))
                 }
-                TimelineKind::Notifications(_) => write!(f, "Notifications"),
-                TimelineKind::Universe => write!(f, "Universe"),
-                TimelineKind::Generic(_) => write!(f, "Custom"),
-                TimelineKind::Search(_) => write!(f, "Search"),
-                TimelineKind::Hashtag(ht) => write!(f, "Hashtag ({})", ht),
-                TimelineKind::Thread(_id) => write!(f, "Thread"),
-                TimelineKind::Profile(_id) => write!(f, "Profile"),
+                TimelineKind::Notifications(_) => write!(f, "{}", tr!("Notifications")),
+                TimelineKind::Universe => write!(f, "{}", tr!("Universe")),
+                TimelineKind::Generic(_) => write!(f, "{}", tr!("Custom")),
+                TimelineKind::Search(_) => write!(f, "{}", tr!("Search")),
+                TimelineKind::Hashtag(ht) => write!(f, "{} {}", tr!("Hashtag"), ht),
+                TimelineKind::Thread(_id) => write!(f, "{}", tr!("Thread")),
+                TimelineKind::Profile(_id) => write!(f, "{}", tr!("Profile")),
             },
-            Route::Reply(_id) => write!(f, "Reply"),
-            Route::Quote(_id) => write!(f, "Quote"),
-            Route::Relays => write!(f, "Relays"),
+            Route::Reply(_id) => write!(f, "{}", tr!("Reply")),
+            Route::Quote(_id) => write!(f, "{}", tr!("Quote")),
+            Route::Relays => write!(f, "{}", tr!("Relays")),
             Route::Accounts(amr) => match amr {
-                AccountsRoute::Accounts => write!(f, "Accounts"),
-                AccountsRoute::AddAccount => write!(f, "Add Account"),
+                AccountsRoute::Accounts => write!(f, "{}", tr!("Accounts")),
+                AccountsRoute::AddAccount => write!(f, "{}", tr!("Add Account")),
             },
-            Route::ComposeNote => write!(f, "Compose Note"),
-            Route::AddColumn(_) => write!(f, "Add Column"),
-            Route::Support => write!(f, "Support"),
-            Route::NewDeck => write!(f, "Add Deck"),
-            Route::EditDeck(_) => write!(f, "Edit Deck"),
-            Route::EditProfile(_) => write!(f, "Edit Profile"),
-            Route::Search => write!(f, "Search"),
-            Route::Wallet(_) => write!(f, "Wallet"),
-            Route::CustomizeZapAmount(_) => write!(f, "Customize Zap Amount"),
+            Route::ComposeNote => write!(f, "{}", tr!("Compose Note")),
+            Route::AddColumn(_) => write!(f, "{}", tr!("Add Column")),
+            Route::Support => write!(f, "{}", tr!("Support")),
+            Route::NewDeck => write!(f, "{}", tr!("Add Deck")),
+            Route::EditDeck(_) => write!(f, "{}", tr!("Edit Deck")),
+            Route::EditProfile(_) => write!(f, "{}", tr!("Edit Profile")),
+            Route::Search => write!(f, "{}", tr!("Search")),
+            Route::Wallet(_) => write!(f, "{}", tr!("Wallet")),
+            Route::CustomizeZapAmount(_) => write!(f, "{}", tr!("Customize Zap Amount")),
         }
     }
 }

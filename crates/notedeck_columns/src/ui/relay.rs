@@ -184,7 +184,7 @@ fn add_relay_button() -> Button<'static> {
     let img = Image::new(img_data).fit_to_exact_size(Vec2::new(48.0, 48.0));
     Button::image_and_text(
         img,
-        RichText::new(tr!(" Add relay"))
+        RichText::new(tr!("Add relay"))
             .size(16.0)
             // TODO: this color should not be hard coded. Find some way to add it to the visuals
             .color(PINK),
@@ -238,9 +238,9 @@ fn show_connection_status(ui: &mut Ui, status: RelayStatus) {
     let bg_color = egui::lerp(Rgba::from(fg_color)..=Rgba::BLACK, 0.8).into();
 
     let label_text = match status {
-        RelayStatus::Connected => "Connected",
-        RelayStatus::Connecting => "Connecting...",
-        RelayStatus::Disconnected => "Not Connected",
+        RelayStatus::Connected => tr!("Connected"),
+        RelayStatus::Connecting => tr!("Connecting..."),
+        RelayStatus::Disconnected => tr!("Not Connected"),
     };
 
     let frame = Frame::new()

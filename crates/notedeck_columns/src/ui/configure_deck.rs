@@ -6,7 +6,7 @@ use notedeck_ui::{
     colors::PINK,
     padding,
 };
-use notedeck::{tr, tr_with_context};
+use notedeck::tr;
 
 pub struct ConfigureDeckView<'a> {
     state: &'a mut DeckState,
@@ -18,13 +18,11 @@ pub struct ConfigureDeckResponse {
     pub name: String,
 }
 
-static CREATE_TEXT: &str = "Create Deck";
-
 impl<'a> ConfigureDeckView<'a> {
     pub fn new(state: &'a mut DeckState) -> Self {
         Self {
             state,
-            create_button_text: CREATE_TEXT.to_owned(),
+            create_button_text: tr!("Create Deck"),
         }
     }
 
@@ -122,25 +120,20 @@ impl<'a> ConfigureDeckView<'a> {
 }
 
 fn show_warnings(ui: &mut Ui, warn_no_icon: bool, warn_no_title: bool) {
-    if warn_no_icon || warn_no_title {
-        let messages = [
-            if warn_no_title {
-                tr!("create a name for the deck")
-            } else {
-                "".to_string()
-            },
-            if warn_no_icon { tr!("select an icon") } else { "".to_string() },
-        ];
-        let message = messages
-            .iter()
-            .filter(|m| !m.is_empty())
-            .cloned()
-            .collect::<Vec<_>>()
-            .join(" and ");
+    let warning = if warn_no_title && warn_no_icon {
+        tr!("Please create a name for the deck and select an icon.")
+    } else if warn_no_title {
+        tr!("Please create a name for the deck.")
+    } else if warn_no_icon {
+        tr!("Please select an icon.")
+    } else {
+        String::new()
+    };
 
+    if !warning.is_empty() {
         ui.add(
             egui::Label::new(
-                RichText::new(tr_with_context!("Please {message}.", "message" => message)).color(ui.visuals().error_fg_color),
+                RichText::new(warning).color(ui.visuals().error_fg_color),
             )
             .wrap(),
         );

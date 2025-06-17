@@ -205,7 +205,7 @@ fn show_no_wallet(
     ui.horizontal_wrapped(|ui| 's: {
         let text_edit = egui::TextEdit::singleline(&mut state.buf)
             .hint_text(
-                egui::RichText::new("Paste your NWC URI here...")
+                egui::RichText::new(tr!("Paste your NWC URI here..."))
                     .text_style(notedeck::NotedeckTextStyle::Body.text_style()),
             )
             .vertical_align(egui::Align::Center)
@@ -343,7 +343,7 @@ fn show_default_zap(ui: &mut egui::Ui, state: &mut DefaultZapState) -> Option<Wa
 
                     ui.memory_mut(|m| m.request_focus(id));
 
-                    ui.label(tr!(" sats"));
+                    ui.label(tr!("sats"));
 
                     if ui
                         .add(styled_button(tr!("Save").as_str(), ui.visuals().widgets.active.bg_fill))
@@ -356,7 +356,7 @@ fn show_default_zap(ui: &mut egui::Ui, state: &mut DefaultZapState) -> Option<Wa
                     if let Some(wallet_action) = show_valid_msats(ui, **msats) {
                         action = Some(wallet_action);
                     }
-                    ui.label(tr!(" sats"));
+                    ui.label(tr!("sats"));
                 }
             }
 

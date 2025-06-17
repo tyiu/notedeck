@@ -4,7 +4,7 @@ use crate::{
 };
 use egui::{Align, Key, KeyboardShortcut, Layout, Modifiers};
 use nostrdb::{Ndb, Transaction};
-use notedeck::{Accounts, AppContext, Images, NoteAction, NoteContext};
+use notedeck::{Accounts, AppContext, Images, NoteAction, NoteContext, tr};
 use notedeck_ui::{icons::search_icon, jobs::JobsCache, NoteOptions, ProfilePic};
 
 /// DaveUi holds all of the data it needs to render itself
@@ -315,7 +315,7 @@ impl<'a> DaveUi<'a> {
                             },
                             Key::Enter,
                         ))
-                        .hint_text(egui::RichText::new("Ask dave anything...").weak())
+                        .hint_text(egui::RichText::new(tr!("Ask dave anything...")).weak())
                         .frame(false),
                 );
 

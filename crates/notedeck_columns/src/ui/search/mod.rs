@@ -285,7 +285,7 @@ fn search_box(
                     let response = ui.add_sized(
                         [ui.available_width(), search_height],
                         TextEdit::singleline(input)
-                            .hint_text(RichText::new("Search notes...").weak())
+                            .hint_text(RichText::new(tr!("Search notes...")).weak())
                             //.desired_width(available_width - 32.0)
                             //.font(egui::FontId::new(font_size, egui::FontFamily::Proportional))
                             .margin(vec2(0.0, 8.0))

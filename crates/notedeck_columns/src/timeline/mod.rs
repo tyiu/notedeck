@@ -7,7 +7,7 @@ use crate::{
 };
 
 use notedeck::{
-    filter, CachedNote, FilterError, FilterState, FilterStates, NoteCache, NoteRef, UnknownIds,
+    filter, CachedNote, FilterError, FilterState, FilterStates, NoteCache, NoteRef, tr, UnknownIds,
 };
 
 use egui_virtual_list::VirtualList;
@@ -60,10 +60,10 @@ pub enum ViewFilter {
 }
 
 impl ViewFilter {
-    pub fn name(&self) -> &'static str {
+    pub fn name(&self) -> String {
         match self {
-            ViewFilter::Notes => "Notes",
-            ViewFilter::NotesAndReplies => "Notes & Replies",
+            ViewFilter::Notes => tr!("Notes"),
+            ViewFilter::NotesAndReplies => tr!("Notes & Replies"),
         }
     }
 

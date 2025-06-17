@@ -340,7 +340,17 @@ def generate_ftl_content(tr_strings: Dict[str, str],
             
             norm_key = normalize_ftl_key(f"{base}#{context}")
             # Apply pseudolocalization if requested
-            value = pseudolocalize(base) if pseudolocalize_content else base
+            # For context strings, we need to pseudolocalize the full string with placeholders
+            if pseudolocalize_content:
+                # Replace placeholders with pseudolocalized versions
+                pseudolocalized_base = base
+                if "{error:?}" in base:
+                    pseudolocalized_base = base.replace("{error:?}", "{érrór:?}")
+                if "{list_kind:?}" in base:
+                    pseudolocalized_base = base.replace("{list_kind:?}", "{líst_kíñd:?}")
+                value = pseudolocalize(pseudolocalized_base)
+            else:
+                value = base
             lines.append(f"{norm_key} = {value}")
         lines.append("")
     

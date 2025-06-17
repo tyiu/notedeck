@@ -51,7 +51,7 @@ pub fn reply_desc(
         }
     };
 
-    ui.add(Label::new(RichText::new(tr!("replying to")).size(size).color(color)).selectable(selectable));
+    ui.add(Label::new(RichText::new("replying to").size(size).color(color)).selectable(selectable));
 
     let reply = note_reply.reply()?;
 
@@ -63,7 +63,7 @@ pub fn reply_desc(
     };
 
     if note_reply.is_reply_to_root() {
-        // We're replying to the root, let's show this
+        // We're replying to the root, show "replying to {user}'s thread"
         let action = Mention::new(
             note_context.ndb,
             note_context.img_cache,
@@ -78,8 +78,7 @@ pub fn reply_desc(
             note_action = action;
         }
 
-        ui.add(Label::new(RichText::new(tr!("'s")).size(size).color(color)).selectable(selectable));
-
+        ui.add(Label::new(RichText::new("'s").size(size).color(color)).selectable(selectable));
         note_link(ui, note_context, tr!("thread").as_str(), &reply_note, jobs);
     } else if let Some(root) = note_reply.root() {
         // replying to another post in a thread, not the root
@@ -102,12 +101,12 @@ pub fn reply_desc(
                 }
 
                 ui.add(
-                    Label::new(RichText::new(tr!("'s")).size(size).color(color)).selectable(selectable),
+                    Label::new(RichText::new("'s").size(size).color(color)).selectable(selectable),
                 );
 
                 note_link(ui, note_context, tr!("note").as_str(), &reply_note, jobs);
             } else {
-                // replying to bob in alice's thread
+                // replying to bob in alice's thread - "replying to bob's note in alice's thread"
 
                 let action = Mention::new(
                     note_context.ndb,
@@ -124,13 +123,13 @@ pub fn reply_desc(
                 }
 
                 ui.add(
-                    Label::new(RichText::new(tr!("'s")).size(size).color(color)).selectable(selectable),
+                    Label::new(RichText::new("'s").size(size).color(color)).selectable(selectable),
                 );
 
                 note_link(ui, note_context, tr!("note").as_str(), &reply_note, jobs);
 
                 ui.add(
-                    Label::new(RichText::new(tr!("in")).size(size).color(color)).selectable(selectable),
+                    Label::new(RichText::new("in").size(size).color(color)).selectable(selectable),
                 );
 
                 let action = Mention::new(
@@ -148,7 +147,7 @@ pub fn reply_desc(
                 }
 
                 ui.add(
-                    Label::new(RichText::new(tr!("'s")).size(size).color(color)).selectable(selectable),
+                    Label::new(RichText::new("'s").size(size).color(color)).selectable(selectable),
                 );
 
                 note_link(ui, note_context, tr!("thread").as_str(), &root_note, jobs);
@@ -169,7 +168,7 @@ pub fn reply_desc(
             }
 
             ui.add(
-                Label::new(RichText::new(tr!("in someone's thread")).size(size).color(color))
+                Label::new(RichText::new("in someone's thread").size(size).color(color))
                     .selectable(selectable),
             );
         }
