@@ -96,44 +96,14 @@ macro_rules! tr_plural {
                 let mut args = $crate::i18n::FluentArgs::new();
                 args.set("count", $count);
                 i18n.get_string_with_args($key, Some(&args)).unwrap_or_else(|| {
-                    // Fallback: simple English pluralization
-                    if $count == 1 {
-                        $key.replace("$count", "1").replace("s ago", " ago")
-                    } else {
-                        $key.replace("$count", &$count.to_string())
-                    }
+                    $key.replace("$count", &$count.to_string())
                 })
             } else {
-                // Fallback to English text if i18n not initialized
-                if $count == 1 {
-                    $key.replace("$count", "1").replace("s ago", " ago")
-                } else {
-                    $key.replace("$count", &$count.to_string())
-                }
+                $key.replace("$count", &$count.to_string())
             }
         }
     };
     ($key:expr, $count:expr, $comment:expr) => {
-        {
-            if let Some(i18n) = $crate::i18n::get_global_i18n() {
-                let mut args = $crate::i18n::FluentArgs::new();
-                args.set("count", $count);
-                i18n.get_string_with_args($key, Some(&args)).unwrap_or_else(|| {
-                    // Fallback: simple English pluralization
-                    if $count == 1 {
-                        $key.replace("$count", "1").replace("s ago", " ago")
-                    } else {
-                        $key.replace("$count", &$count.to_string())
-                    }
-                })
-            } else {
-                // Fallback to English text if i18n not initialized
-                if $count == 1 {
-                    $key.replace("$count", "1").replace("s ago", " ago")
-                } else {
-                    $key.replace("$count", &$count.to_string())
-                }
-            }
-        }
+        $crate::tr_plural!($key, $count)
     };
 } 
