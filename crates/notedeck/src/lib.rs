@@ -82,3 +82,5 @@ pub use enostr;
 pub use nostrdb;
 
 pub use zaps::Zaps;
+
+pub use crate::i18n::{get_global_i18n, init_global_i18n};

@@ -253,6 +253,9 @@ impl Notedeck {
                     .expect("Failed to create fallback localization manager")
             }));
         let i18n = LocalizationContext::new(localization_manager);
+        
+        // Initialize global i18n context
+        crate::i18n::init_global_i18n(i18n.clone());
 
         Self {
             ndb,

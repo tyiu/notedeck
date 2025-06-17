@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, Mutex};
 use fluent::FluentArgs;
 use fluent_resmgr::ResourceManager;
 use fluent_langneg::negotiate_languages;
@@ -7,8 +7,8 @@ use std::path::Path;
 
 /// Manages localization resources and provides localized strings
 pub struct LocalizationManager {
-    /// The fluent resource manager
-    resmgr: Arc<ResourceManager>,
+    /// The fluent resource manager (wrapped in Mutex for thread safety)
+    resmgr: Arc<Mutex<ResourceManager>>,
     /// Current locale
     current_locale: RwLock<LanguageIdentifier>,
     /// Available locales
@@ -22,7 +22,7 @@ impl LocalizationManager {
     pub fn new(resource_dir: &Path) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Initialize the resource manager with a path scheme
         let path_scheme = format!("{}/{{locale}}/{{resname}}", resource_dir.display());
-        let resmgr = Arc::new(ResourceManager::new(path_scheme));
+        let resmgr = Arc::new(Mutex::new(ResourceManager::new(path_scheme)));
         
         // Default to English (US)
         let default_locale: LanguageIdentifier = "en-US".parse().map_err(|e| format!("Locale parse error: {e:?}"))?;
@@ -54,7 +54,8 @@ impl LocalizationManager {
         let locale = self.current_locale.read().map_err(|e| format!("Lock error: {e}"))?;
         
         // Get the bundle for the current locale
-        let bundle = self.resmgr.get_bundle(vec![locale.clone()], vec!["main".to_string()]);
+        let resmgr = self.resmgr.lock().map_err(|e| format!("Mutex error: {e}"))?;
+        let bundle = resmgr.get_bundle(vec![locale.clone()], vec!["main".to_string()]);
         
         // Handle errors from get_bundle
         if let Err(errors) = &bundle {
@@ -126,6 +127,7 @@ impl LocalizationManager {
 }
 
 /// Context for sharing localization across the application
+#[derive(Clone)]
 pub struct LocalizationContext {
     /// The localization manager
     manager: Arc<LocalizationManager>,

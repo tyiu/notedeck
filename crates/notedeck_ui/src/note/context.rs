@@ -1,6 +1,6 @@
 use egui::{Rect, Vec2};
 use nostrdb::NoteKey;
-use notedeck::{BroadcastContext, NoteContextSelection};
+use notedeck::{BroadcastContext, NoteContextSelection, tr, Localizable};
 
 pub struct NoteContextButton {
     put_at: Option<Rect>,
@@ -111,29 +111,29 @@ impl NoteContextButton {
 
         stationary_arbitrary_menu_button(ui, button_response, |ui| {
             ui.set_max_width(200.0);
-            if ui.button("Copy text").clicked() {
+            if ui.button(tr!("action-copy-text")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyText);
                 ui.close_menu();
             }
-            if ui.button("Copy user public key").clicked() {
+            if ui.button(tr!("action-copy-pubkey")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyPubkey);
                 ui.close_menu();
             }
-            if ui.button("Copy note id").clicked() {
+            if ui.button(tr!("action-copy-note-id")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyNoteId);
                 ui.close_menu();
             }
-            if ui.button("Copy note json").clicked() {
+            if ui.button(tr!("action-copy-note-json")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyNoteJSON);
                 ui.close_menu();
             }
-            if ui.button("Broadcast").clicked() {
+            if ui.button(tr!("action-broadcast")).clicked() {
                 context_selection = Some(NoteContextSelection::Broadcast(
                     BroadcastContext::Everywhere,
                 ));
                 ui.close_menu();
             }
-            if ui.button("Broadcast to local network").clicked() {
+            if ui.button(tr!("action-broadcast-local")).clicked() {
                 context_selection = Some(NoteContextSelection::Broadcast(
                     BroadcastContext::LocalNetwork,
                 ));

@@ -43,6 +43,7 @@ fluent = { workspace = true }
 fluent-resmgr = { workspace = true }
 fluent-langneg = { workspace = true }
 unic-langid = { workspace = true }
+once_cell = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

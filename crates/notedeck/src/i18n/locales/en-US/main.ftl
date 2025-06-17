@@ -22,6 +22,12 @@ action-profile = Profile
 action-logout = Logout
 action-login = Login
 action-signup = Sign Up
+action-copy-text = Copy text
+action-copy-pubkey = Copy user public key
+action-copy-note-id = Copy note id
+action-copy-note-json = Copy note json
+action-broadcast = Broadcast
+action-broadcast-local = Broadcast to local network
 
 # Common UI elements
 ui-loading = Loading...
