@@ -12,4 +12,26 @@ pub use manager::LocalizationContext;
 /// Re-export commonly used types for convenience
 pub use fluent::FluentArgs;
 pub use fluent::FluentValue;
-pub use unic_langid::LanguageIdentifier; 
+pub use unic_langid::LanguageIdentifier;
+
+/// Helper macro for easier string localization
+/// 
+/// Usage:
+/// ```rust
+/// // Simple string lookup
+/// let text = tr!(ctx, "action-reply-note");
+/// 
+/// // String with arguments
+/// let text = tr!(ctx, "welcome-message", &FluentArgs::from_iter([
+///     ("name", "John".into())
+/// ]));
+/// ```
+#[macro_export]
+macro_rules! tr {
+    ($ctx:expr, $id:expr) => {
+        $ctx.get_localized_string($id)
+    };
+    ($ctx:expr, $id:expr, $args:expr) => {
+        $ctx.get_localized_string_with_args($id, Some($args))
+    };
+} 

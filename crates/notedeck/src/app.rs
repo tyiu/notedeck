@@ -1,20 +1,32 @@
-use crate::persist::{AppSizeHandler, ZoomHandler};
-use crate::wallet::GlobalWallet;
-use crate::zaps::Zaps;
-use crate::JobPool;
 use crate::{
-    frame_history::FrameHistory, AccountStorage, Accounts, AppContext, Args, DataPath,
-    DataPathType, Directory, Images, NoteAction, NoteCache, RelayDebugView, ThemeHandler,
-    UnknownIds,
+    accounts::Accounts,
+    args::Args,
+    context::AppContext,
+    frame_history::FrameHistory,
+    i18n::{LocalizationContext, LocalizationManager},
+    imgcache::Images,
+    job_pool::JobPool,
+    note::NoteAction,
+    notecache::NoteCache,
+    persist::{AppSizeHandler, ZoomHandler},
+    relay_debug::RelayDebugView,
+    storage::{AccountStorage, DataPath, DataPathType, Directory},
+    ThemeHandler,
+    unknowns::UnknownIds,
+    wallet::GlobalWallet,
+    zaps::Zaps,
 };
 use egui::ThemePreference;
 use egui_winit::clipboard::Clipboard;
 use enostr::RelayPool;
 use nostrdb::{Config, Ndb, Transaction};
-use std::cell::RefCell;
-use std::collections::BTreeSet;
-use std::path::Path;
-use std::rc::Rc;
+use std::{
+    collections::BTreeSet,
+    path::Path,
+    rc::Rc,
+    cell::RefCell,
+    sync::Arc,
+};
 use tracing::{error, info};
 
 pub enum AppAction {
@@ -46,6 +58,7 @@ pub struct Notedeck {
     zaps: Zaps,
     frame_history: FrameHistory,
     job_pool: JobPool,
+    i18n: LocalizationContext,
 }
 
 /// Our chrome, which is basically nothing
@@ -225,6 +238,22 @@ impl Notedeck {
         let zaps = Zaps::default();
         let job_pool = JobPool::default();
 
+        // Initialize localization
+        let i18n_resource_dir = path.path(DataPathType::I18n);
+        let _ = std::fs::create_dir_all(&i18n_resource_dir);
+        
+        // Copy built-in FTL files to user directory
+        Self::copy_ftl_files(&i18n_resource_dir);
+        
+        let localization_manager = Arc::new(LocalizationManager::new(&i18n_resource_dir)
+            .unwrap_or_else(|e| {
+                error!("Failed to initialize localization manager: {}", e);
+                // Create a fallback manager with a temporary directory
+                LocalizationManager::new(&std::env::temp_dir().join("notedeck_i18n_fallback"))
+                    .expect("Failed to create fallback localization manager")
+            }));
+        let i18n = LocalizationContext::new(localization_manager);
+
         Self {
             ndb,
             img_cache,
@@ -244,6 +273,7 @@ impl Notedeck {
             clipboard: Clipboard::new(None),
             zaps,
             job_pool,
+            i18n,
         }
     }
 
@@ -268,6 +298,7 @@ impl Notedeck {
             zaps: &mut self.zaps,
             frame_history: &mut self.frame_history,
             job_pool: &mut self.job_pool,
+            i18n: &self.i18n,
         }
     }
 
@@ -285,5 +316,17 @@ impl Notedeck {
 
     pub fn unrecognized_args(&self) -> &BTreeSet<String> {
         &self.unrecognized_args
+    }
+
+    fn copy_ftl_files(dir: &Path) {
+        // Create the en-US directory
+        let en_us_dir = dir.join("en-US");
+        let _ = std::fs::create_dir_all(&en_us_dir);
+        
+        // Copy the main.ftl file
+        let main_ftl_content = include_str!("i18n/locales/en-US/main.ftl");
+        if let Err(e) = std::fs::write(en_us_dir.join("main.ftl"), main_ftl_content) {
+            error!("Failed to copy main.ftl: {}", e);
+        }
     }
 }

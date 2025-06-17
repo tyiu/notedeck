@@ -36,6 +36,7 @@ impl DataPath {
             DataPathType::SelectedKey => PathBuf::from("storage").join("selected_account"),
             DataPathType::Db => PathBuf::from("db"),
             DataPathType::Cache => PathBuf::from("cache"),
+            DataPathType::I18n => PathBuf::from("i18n"),
         }
     }
 
@@ -57,6 +58,7 @@ pub enum DataPathType {
     SelectedKey,
     Db,
     Cache,
+    I18n,
 }
 
 #[derive(Debug, PartialEq)]
