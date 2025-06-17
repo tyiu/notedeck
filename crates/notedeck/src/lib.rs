@@ -7,6 +7,7 @@ pub mod debouncer;
 mod error;
 pub mod filter;
 pub mod fonts;
+pub mod i18n;
 mod frame_history;
 mod imgcache;
 mod job_pool;
@@ -40,6 +41,8 @@ pub use context::AppContext;
 pub use error::{show_one_error_message, Error, FilterError, ZapError};
 pub use filter::{FilterState, FilterStates, UnifiedSubscription};
 pub use fonts::NamedFontFamily;
+pub use i18n::{LocalizationContext, LocalizationManager, FluentArgs, FluentValue, LanguageIdentifier};
+pub use i18n::manager::Localizable;
 pub use imgcache::{
     Animation, GifState, GifStateMap, ImageFrame, Images, LoadableTextureState, MediaCache,
     MediaCacheType, TextureFrame, TextureState, TexturedImage, TexturesCache,
