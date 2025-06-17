@@ -111,33 +111,38 @@ impl NoteContextButton {
 
         stationary_arbitrary_menu_button(ui, button_response, |ui| {
             ui.set_max_width(200.0);
-            if ui.button(tr!("Copy Text")).clicked() {
+            if ui.button(tr!("Copy Text", "Copy the text content of the note to clipboard")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyText);
                 ui.close_menu();
             }
-            if ui.button(tr!("Copy Pubkey")).clicked() {
+            if ui.button(tr!("Copy Pubkey", "Copy the author's public key to clipboard")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyPubkey);
                 ui.close_menu();
             }
-            if ui.button(tr!("Copy Note ID")).clicked() {
+            if ui.button(tr!("Copy Note ID", "Copy the unique note identifier to clipboard")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyNoteId);
                 ui.close_menu();
             }
-            if ui.button(tr!("Copy Note JSON")).clicked() {
+            if ui.button(tr!("Copy Note JSON", "Copy the raw note data in JSON format to clipboard")).clicked() {
                 context_selection = Some(NoteContextSelection::CopyNoteJSON);
                 ui.close_menu();
             }
-            if ui.button(tr!("Broadcast")).clicked() {
+            if ui.button(tr!("Broadcast", "Broadcast the note to all connected relays")).clicked() {
                 context_selection = Some(NoteContextSelection::Broadcast(
                     BroadcastContext::Everywhere,
                 ));
                 ui.close_menu();
             }
-            if ui.button(tr!("Broadcast Local")).clicked() {
+            if ui.button(tr!("Broadcast Local", "Broadcast the note only to local network relays")).clicked() {
                 context_selection = Some(NoteContextSelection::Broadcast(
                     BroadcastContext::LocalNetwork,
                 ));
                 ui.close_menu();
+            }
+            
+            // Example of context-aware translation
+            if ui.button(tr_with_context!("Post", "verb", "Action to publish a new message")).clicked() {
+                // Post action logic
             }
         });
 

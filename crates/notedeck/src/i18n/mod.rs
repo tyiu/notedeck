@@ -35,9 +35,19 @@ pub fn get_global_i18n() -> Option<Arc<LocalizationContext>> {
 
 /// Macro for getting localized strings
 /// Uses the English string as the key and falls back to the English text if no translation is found
+/// Optional comment parameter provides context for translators
 #[macro_export]
 macro_rules! tr {
     ($key:expr) => {
+        {
+            if let Some(i18n) = $crate::i18n::get_global_i18n() {
+                i18n.get_string($key).unwrap_or_else(|| $key.to_string())
+            } else {
+                $key.to_string() // Fallback to English text if i18n not initialized
+            }
+        }
+    };
+    ($key:expr, $comment:expr) => {
         {
             if let Some(i18n) = $crate::i18n::get_global_i18n() {
                 i18n.get_string($key).unwrap_or_else(|| $key.to_string())
@@ -50,9 +60,20 @@ macro_rules! tr {
 
 /// Macro for getting localized strings with context
 /// The context is used to generate a more specific key for better translation
+/// Optional comment parameter provides additional context for translators
 #[macro_export]
 macro_rules! tr_with_context {
     ($key:expr, $context:expr) => {
+        {
+            let context_key = format!("{}#{}", $key, $context);
+            if let Some(i18n) = $crate::i18n::get_global_i18n() {
+                i18n.get_string(&context_key).unwrap_or_else(|| $key.to_string())
+            } else {
+                $key.to_string() // Fallback to English text if i18n not initialized
+            }
+        }
+    };
+    ($key:expr, $context:expr, $comment:expr) => {
         {
             let context_key = format!("{}#{}", $key, $context);
             if let Some(i18n) = $crate::i18n::get_global_i18n() {
@@ -66,9 +87,33 @@ macro_rules! tr_with_context {
 
 /// Macro for getting localized pluralized strings with count
 /// Uses the English string as the key and falls back to the English text if no translation is found
+/// Optional comment parameter provides context for translators
 #[macro_export]
 macro_rules! tr_plural {
     ($key:expr, $count:expr) => {
+        {
+            if let Some(i18n) = $crate::i18n::get_global_i18n() {
+                let mut args = $crate::i18n::FluentArgs::new();
+                args.set("count", $count);
+                i18n.get_string_with_args($key, Some(&args)).unwrap_or_else(|| {
+                    // Fallback: simple English pluralization
+                    if $count == 1 {
+                        $key.replace("$count", "1").replace("s ago", " ago")
+                    } else {
+                        $key.replace("$count", &$count.to_string())
+                    }
+                })
+            } else {
+                // Fallback to English text if i18n not initialized
+                if $count == 1 {
+                    $key.replace("$count", "1").replace("s ago", " ago")
+                } else {
+                    $key.replace("$count", &$count.to_string())
+                }
+            }
+        }
+    };
+    ($key:expr, $count:expr, $comment:expr) => {
         {
             if let Some(i18n) = $crate::i18n::get_global_i18n() {
                 let mut args = $crate::i18n::FluentArgs::new();
