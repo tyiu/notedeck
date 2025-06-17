@@ -4,6 +4,7 @@ use fluent_resmgr::ResourceManager;
 use fluent_langneg::negotiate_languages;
 use unic_langid::LanguageIdentifier;
 use std::path::Path;
+use fluent::{FluentBundle, FluentResource};
 
 /// Manages localization resources and provides localized strings
 pub struct LocalizationManager {
@@ -21,7 +22,9 @@ impl LocalizationManager {
     /// Creates a new LocalizationManager with the specified resource directory
     pub fn new(resource_dir: &Path) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Initialize the resource manager with a path scheme
-        let path_scheme = format!("{}/{{locale}}/{{resname}}", resource_dir.display());
+        // The resname should include the .ftl extension
+        let path_scheme = format!("{}/{{locale}}/{{resname}}.ftl", resource_dir.display());
+        tracing::info!("Creating ResourceManager with path scheme: {}", path_scheme);
         let resmgr = Arc::new(Mutex::new(ResourceManager::new(path_scheme)));
         
         // Default to English (US)
@@ -53,17 +56,30 @@ impl LocalizationManager {
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let locale = self.current_locale.read().map_err(|e| format!("Lock error: {e}"))?;
         
-        // Get the bundle for the current locale
-        let resmgr = self.resmgr.lock().map_err(|e| format!("Mutex error: {e}"))?;
-        let bundle = resmgr.get_bundle(vec![locale.clone()], vec!["main".to_string()]);
+        tracing::debug!("Getting string '{}' for locale '{}'", id, locale);
         
-        // Handle errors from get_bundle
-        if let Err(errors) = &bundle {
-            tracing::warn!("Failed to get bundle for locale {}: {:?}", locale, errors);
-            return Err(format!("Failed to get bundle: {:?}", errors).into());
+        // Reconstruct the expected path for the FTL file
+        let expected_path = format!(
+            "/Users/tyiu/Library/Application Support/notedeck/i18n/{}/main.ftl",
+            locale
+        );
+        tracing::debug!("Expected path for bundle: {}", expected_path);
+        // Try to open the file directly
+        match std::fs::File::open(&expected_path) {
+            Ok(_) => tracing::info!("Direct file open succeeded: {}", expected_path),
+            Err(e) => tracing::error!("Direct file open failed: {} ({})", expected_path, e),
         }
         
-        let bundle = bundle.unwrap();
+        // Load the FTL file directly instead of using ResourceManager
+        let ftl_string = std::fs::read_to_string(&expected_path)
+            .map_err(|e| format!("Failed to read FTL file: {}", e))?;
+        
+        // Create a bundle directly from the FTL content
+        let mut bundle = FluentBundle::new(vec![locale.clone()]);
+        bundle.add_resource(
+            FluentResource::try_new(ftl_string)
+                .map_err(|e| format!("Failed to parse FTL content: {:?}", e))?
+        ).map_err(|e| format!("Failed to add resource to bundle: {:?}", e))?;
         
         // Get the message
         let message = bundle
@@ -82,6 +98,7 @@ impl LocalizationManager {
             tracing::warn!("Localization errors for {}: {:?}", id, errors);
         }
         
+        tracing::debug!("Successfully got string '{}' = '{}'", id, result);
         Ok(result.into_owned())
     }
     

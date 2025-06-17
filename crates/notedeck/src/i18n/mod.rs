@@ -16,13 +16,16 @@ pub use unic_langid::LanguageIdentifier;
 
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
+use tracing::{info, debug};
 
 /// Global localization context for easy access from anywhere
 static GLOBAL_I18N: OnceCell<Arc<LocalizationContext>> = OnceCell::new();
 
 /// Initialize the global localization context
 pub fn init_global_i18n(context: LocalizationContext) {
+    info!("Initializing global i18n context");
     let _ = GLOBAL_I18N.set(Arc::new(context));
+    info!("Global i18n context initialized successfully");
 }
 
 /// Get the global localization context

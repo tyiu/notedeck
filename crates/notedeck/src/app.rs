@@ -240,6 +240,7 @@ impl Notedeck {
 
         // Initialize localization
         let i18n_resource_dir = path.path(DataPathType::I18n);
+        info!("i18n_resource_dir: {}", i18n_resource_dir.display());
         let _ = std::fs::create_dir_all(&i18n_resource_dir);
         
         // Copy built-in FTL files to user directory
@@ -328,8 +329,9 @@ impl Notedeck {
         
         // Copy the main.ftl file
         let main_ftl_content = include_str!("i18n/locales/en-US/main.ftl");
-        if let Err(e) = std::fs::write(en_us_dir.join("main.ftl"), main_ftl_content) {
-            error!("Failed to copy main.ftl: {}", e);
+        match std::fs::write(en_us_dir.join("main.ftl"), main_ftl_content) {
+            Ok(_) => info!("Successfully copied main.ftl to {}", en_us_dir.display()),
+            Err(e) => error!("Failed to copy main.ftl: {}", e),
         }
     }
 }
