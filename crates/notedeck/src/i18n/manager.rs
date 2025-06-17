@@ -1,6 +1,5 @@
-use std::sync::{Arc, RwLock, Mutex};
+use std::sync::{Arc, RwLock};
 use fluent::FluentArgs;
-use fluent_resmgr::ResourceManager;
 use fluent_langneg::negotiate_languages;
 use unic_langid::LanguageIdentifier;
 use std::path::Path;
@@ -8,8 +7,6 @@ use fluent::{FluentBundle, FluentResource};
 
 /// Manages localization resources and provides localized strings
 pub struct LocalizationManager {
-    /// The fluent resource manager (wrapped in Mutex for thread safety)
-    resmgr: Arc<Mutex<ResourceManager>>,
     /// Current locale
     current_locale: RwLock<LanguageIdentifier>,
     /// Available locales
@@ -20,13 +17,7 @@ pub struct LocalizationManager {
 
 impl LocalizationManager {
     /// Creates a new LocalizationManager with the specified resource directory
-    pub fn new(resource_dir: &Path) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        // Initialize the resource manager with a path scheme
-        // The resname should include the .ftl extension
-        let path_scheme = format!("{}/{{locale}}/{{resname}}.ftl", resource_dir.display());
-        tracing::info!("Creating ResourceManager with path scheme: {}", path_scheme);
-        let resmgr = Arc::new(Mutex::new(ResourceManager::new(path_scheme)));
-        
+    pub fn new(_resource_dir: &Path) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Default to English (US)
         let default_locale: LanguageIdentifier = "en-US".parse().map_err(|e| format!("Locale parse error: {e:?}"))?;
         let fallback_locale = default_locale.clone();
@@ -45,7 +36,6 @@ impl LocalizationManager {
         }
         
         Ok(Self {
-            resmgr,
             current_locale: RwLock::new(default_locale),
             available_locales,
             fallback_locale,
