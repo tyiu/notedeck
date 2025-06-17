@@ -12,6 +12,7 @@ import argparse
 from pathlib import Path
 from typing import Set, Dict, List, Tuple
 import json
+import collections
 
 def find_rust_files(project_root: Path) -> List[Path]:
     """Find all Rust files in the project."""
@@ -25,6 +26,47 @@ def find_rust_files(project_root: Path) -> List[Path]:
                 rust_files.append(Path(root) / file)
     
     return rust_files
+
+def extract_tr_macros_with_lines(content: str, file_path: str) -> Dict[str, list]:
+    """Extract tr! macro calls from Rust code with optional comments and line numbers."""
+    tr_pattern = r'tr!\s*\(\s*["\']([^"\']{1,100})["\'](?:\s*,\s*["\']([^"\']{1,200})["\'])?\s*\)'
+    matches = []
+    for i, line in enumerate(content.splitlines(), 1):
+        for m in re.finditer(tr_pattern, line):
+            key = m.group(1)
+            comment = m.group(2) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+            if not any(skip in key.lower() for skip in [
+                '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@',
+                'crates/', 'src/', 'target/', 'build.rs']):
+                matches.append((key, comment, i, file_path))
+    return matches
+
+def extract_tr_with_context_macros_with_lines(content: str, file_path: str) -> Dict[Tuple[str, str], list]:
+    tr_context_pattern = r'tr_with_context!\s*\(\s*["\']([^"\']{1,100})["\']\s*,\s*["\']([^"\']{1,50})["\'](?:\s*,\s*["\']([^"\']{1,200})["\'])?\s*\)'
+    matches = []
+    for i, line in enumerate(content.splitlines(), 1):
+        for m in re.finditer(tr_context_pattern, line):
+            base = m.group(1)
+            context = m.group(2)
+            comment = m.group(3) if m.lastindex and m.lastindex >= 3 and m.group(3) else ""
+            if not any(skip in base.lower() for skip in [
+                '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@',
+                'crates/', 'src/', 'target/', 'build.rs']):
+                matches.append(((base, context), comment, i, file_path))
+    return matches
+
+def extract_tr_plural_macros_with_lines(content: str, file_path: str) -> Dict[str, list]:
+    tr_plural_pattern = r'tr_plural!\s*\(\s*["\']([^"\']{1,100})["\']\s*,(?:\s*["\']([^"\']{1,200})["\']\s*,)?'
+    matches = []
+    for i, line in enumerate(content.splitlines(), 1):
+        for m in re.finditer(tr_plural_pattern, line):
+            key = m.group(1)
+            comment = m.group(2) if m.lastindex and m.lastindex >= 2 and m.group(2) else ""
+            if not any(skip in key.lower() for skip in [
+                '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@',
+                'crates/', 'src/', 'target/', 'build.rs']):
+                matches.append((key, comment, i, file_path))
+    return matches
 
 def extract_tr_macros(content: str) -> Dict[str, str]:
     """Extract tr! macro calls from Rust code with optional comments."""
@@ -207,10 +249,26 @@ def main():
     context_collisions = {}
     plural_collisions = {}
     
+    # Track all occurrences for intra-file collision detection
+    tr_occurrences = collections.defaultdict(list)
+    context_occurrences = collections.defaultdict(list)
+    plural_occurrences = collections.defaultdict(list)
+    
     for rust_file in rust_files:
         try:
             with open(rust_file, 'r', encoding='utf-8') as f:
                 content = f.read()
+            
+            # For intra-file collision detection
+            tr_lines = extract_tr_macros_with_lines(content, str(rust_file))
+            for key, comment, line, file_path in tr_lines:
+                tr_occurrences[(file_path, key)].append((comment, line))
+            context_lines = extract_tr_with_context_macros_with_lines(content, str(rust_file))
+            for (base, context), comment, line, file_path in context_lines:
+                context_occurrences[(file_path, base, context)].append((comment, line))
+            plural_lines = extract_tr_plural_macros_with_lines(content, str(rust_file))
+            for key, comment, line, file_path in plural_lines:
+                plural_occurrences[(file_path, key)].append((comment, line))
             
             tr_strings = extract_tr_macros(content)
             context_strings = extract_tr_with_context_macros(content)
@@ -248,6 +306,36 @@ def main():
             
         except Exception as e:
             print(f"Error reading {rust_file}: {e}")
+    
+    # Intra-file collision detection
+    has_intra_file_collisions = False
+    for (file_path, key), occurrences in tr_occurrences.items():
+        comments = set(c for c, _ in occurrences)
+        if len(occurrences) > 1 and len(comments) > 1:
+            has_intra_file_collisions = True
+            print(f"\n⚠️  Intra-file key collision in {file_path} for '{key}':")
+            for comment, line in occurrences:
+                comment_text = f" (comment: '{comment}')" if comment else " (no comment)"
+                print(f"    Line {line}{comment_text}")
+    for (file_path, base, context), occurrences in context_occurrences.items():
+        comments = set(c for c, _ in occurrences)
+        if len(occurrences) > 1 and len(comments) > 1:
+            has_intra_file_collisions = True
+            print(f"\n⚠️  Intra-file key collision in {file_path} for '{base}#{context}':")
+            for comment, line in occurrences:
+                comment_text = f" (comment: '{comment}')" if comment else " (no comment)"
+                print(f"    Line {line}{comment_text}")
+    for (file_path, key), occurrences in plural_occurrences.items():
+        comments = set(c for c, _ in occurrences)
+        if len(occurrences) > 1 and len(comments) > 1:
+            has_intra_file_collisions = True
+            print(f"\n⚠️  Intra-file key collision in {file_path} for '{key}':")
+            for comment, line in occurrences:
+                comment_text = f" (comment: '{comment}')" if comment else " (no comment)"
+                print(f"    Line {line}{comment_text}")
+    if has_intra_file_collisions and args.fail_on_collisions:
+        print(f"❌ Exiting due to intra-file key collisions (--fail-on-collisions flag)")
+        exit(1)
     
     # Report collisions
     has_collisions = False
