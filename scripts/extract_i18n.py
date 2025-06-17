@@ -42,18 +42,38 @@ def extract_tr_macros_with_lines(content: str, file_path: str) -> Dict[str, list
     return matches
 
 def extract_tr_with_context_macros_with_lines(content: str, file_path: str) -> Dict[Tuple[str, str], list]:
+    """Extract tr_with_context! macro calls from Rust code with line numbers and comments."""
+    # Pattern for tr_with_context!("string", "context") or tr_with_context!("string", "context", "comment")
+    # Updated to handle new syntax: tr_with_context!("string", "param" => value, "param2" => value2)
     tr_context_pattern = r'tr_with_context!\s*\(\s*["\']([^"\']{1,100})["\']\s*,\s*["\']([^"\']{1,50})["\'](?:\s*,\s*["\']([^"\']{1,200})["\'])?\s*\)'
-    matches = []
-    for i, line in enumerate(content.splitlines(), 1):
-        for m in re.finditer(tr_context_pattern, line):
-            base = m.group(1)
-            context = m.group(2)
-            comment = m.group(3) if m.lastindex and m.lastindex >= 3 and m.group(3) else ""
+    
+    # Also look for the new syntax with named parameters
+    # This pattern captures the string and the first parameter name
+    tr_context_new_pattern = r'tr_with_context!\s*\(\s*["\']([^"\']{1,100})["\']\s*,\s*["\']([^"\']{1,50})["\']\s*=>\s*[^,)]+'
+    
+    matches = re.findall(tr_context_pattern, content)
+    new_matches = re.findall(tr_context_new_pattern, content)
+    
+    # Combine both patterns
+    all_matches = matches + new_matches
+    
+    # Filter out obvious false positives and collect with line numbers and comments
+    filtered_matches = {}
+    for line_num, line in enumerate(content.split('\n'), 1):
+        for match in all_matches:
+            base = match[0]
+            context = match[1]
+            comment = match[2] if len(match) > 2 and match[2] else ""
+            
             if not any(skip in base.lower() for skip in [
                 '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@',
-                'crates/', 'src/', 'target/', 'build.rs']):
-                matches.append(((base, context), comment, i, file_path))
-    return matches
+                'crates/', 'src/', 'target/', 'build.rs'
+            ]):
+                if (base, context) not in filtered_matches:
+                    filtered_matches[(base, context)] = []
+                filtered_matches[(base, context)].append((comment, f"{file_path}:{line_num}"))
+    
+    return filtered_matches
 
 def extract_tr_plural_macros_with_lines(content: str, file_path: str) -> Dict[str, list]:
     tr_plural_pattern = r'tr_plural!\s*\(\s*["\']([^"\']{1,100})["\']\s*,(?:\s*["\']([^"\']{1,200})["\']\s*,)?'
@@ -92,8 +112,14 @@ def extract_tr_macros(content: str) -> Dict[str, str]:
 def extract_tr_with_context_macros(content: str) -> Dict[Tuple[str, str], str]:
     """Extract tr_with_context! macro calls from Rust code with optional comments."""
     # Pattern for tr_with_context!("string", "context") or tr_with_context!("string", "context", "comment")
+    # Updated to handle new syntax: tr_with_context!("string", "param" => value, "param2" => value2)
     tr_context_pattern = r'tr_with_context!\s*\(\s*["\']([^"\']{1,100})["\']\s*,\s*["\']([^"\']{1,50})["\'](?:\s*,\s*["\']([^"\']{1,200})["\'])?\s*\)'
     matches = re.findall(tr_context_pattern, content)
+    
+    # Also look for the new syntax with named parameters
+    # This pattern captures the string and the first parameter name
+    tr_context_new_pattern = r'tr_with_context!\s*\(\s*["\']([^"\']{1,100})["\']\s*,\s*["\']([^"\']{1,50})["\']\s*=>\s*[^,)]+'
+    new_matches = re.findall(tr_context_new_pattern, content)
     
     # Filter out obvious false positives and collect with comments
     filtered_matches = {}
@@ -101,6 +127,18 @@ def extract_tr_with_context_macros(content: str) -> Dict[Tuple[str, str], str]:
         base = match[0]
         context = match[1]
         comment = match[2] if len(match) > 2 and match[2] else ""
+        
+        if not any(skip in base.lower() for skip in [
+            '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@',
+            'crates/', 'src/', 'target/', 'build.rs'
+        ]):
+            filtered_matches[(base, context)] = comment
+    
+    # Handle new syntax matches
+    for match in new_matches:
+        base = match[0]
+        context = match[1]
+        comment = ""  # No comment in new syntax
         
         if not any(skip in base.lower() for skip in [
             '/', '\\', '.ftl', '.rs', 'http', 'https', 'www', '@',

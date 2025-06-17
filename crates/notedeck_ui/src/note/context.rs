@@ -1,6 +1,6 @@
 use egui::{Rect, Vec2};
 use nostrdb::NoteKey;
-use notedeck::{BroadcastContext, NoteContextSelection, tr, tr_with_context};
+use notedeck::{BroadcastContext, NoteContextSelection, tr};
 
 pub struct NoteContextButton {
     put_at: Option<Rect>,

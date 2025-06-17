@@ -6,7 +6,7 @@ use egui::{
     Align, Button, CornerRadius, Frame, Id, Image, Layout, Margin, Rgba, RichText, Ui, Vec2,
 };
 use enostr::RelayPool;
-use notedeck::{Accounts, NotedeckTextStyle};
+use notedeck::{Accounts, NotedeckTextStyle, tr};
 use notedeck_ui::{colors::PINK, padding, View};
 use tracing::debug;
 
@@ -28,7 +28,7 @@ impl View for RelayView<'_> {
                 ui.horizontal(|ui| {
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                         ui.label(
-                            RichText::new("Relays")
+                            RichText::new(tr!("Relays"))
                                 .text_style(NotedeckTextStyle::Heading2.text_style()),
                         );
                     });
@@ -157,7 +157,7 @@ impl<'a> RelayView<'a> {
             let is_enabled = self.manager.is_valid_relay(text_buffer);
             let text_edit = egui::TextEdit::singleline(text_buffer)
                 .hint_text(
-                    RichText::new("Enter the relay here")
+                    RichText::new(tr!("Enter the relay here"))
                         .text_style(NotedeckTextStyle::Body.text_style()),
                 )
                 .vertical_align(Align::Center)
@@ -184,7 +184,7 @@ fn add_relay_button() -> Button<'static> {
     let img = Image::new(img_data).fit_to_exact_size(Vec2::new(48.0, 48.0));
     Button::image_and_text(
         img,
-        RichText::new(" Add relay")
+        RichText::new(tr!(" Add relay"))
             .size(16.0)
             // TODO: this color should not be hard coded. Find some way to add it to the visuals
             .color(PINK),
@@ -194,7 +194,8 @@ fn add_relay_button() -> Button<'static> {
 
 fn add_relay_button2(is_enabled: bool) -> impl egui::Widget + 'static {
     move |ui: &mut egui::Ui| -> egui::Response {
-        let button_widget = styled_button("Add", notedeck_ui::colors::PINK);
+        let add_text = tr!("Add");
+        let button_widget = styled_button(add_text.as_str(), notedeck_ui::colors::PINK);
         ui.add_enabled(is_enabled, button_widget)
     }
 }

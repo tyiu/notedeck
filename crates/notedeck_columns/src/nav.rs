@@ -33,6 +33,7 @@ use notedeck::{
 };
 use notedeck_ui::View;
 use tracing::error;
+use notedeck::tr;
 
 /// The result of processing a nav response
 pub enum ProcessNavResult {
@@ -440,14 +441,14 @@ fn render_nav_body(
             let txn = if let Ok(txn) = Transaction::new(ctx.ndb) {
                 txn
             } else {
-                ui.label("Reply to unknown note");
+                ui.label(tr!("Reply to unknown note"));
                 return None;
             };
 
             let note = if let Ok(note) = ctx.ndb.get_note_by_id(&txn, id.bytes()) {
                 note
             } else {
-                ui.label("Reply to unknown note");
+                ui.label(tr!("Reply to unknown note"));
                 return None;
             };
 
@@ -484,7 +485,7 @@ fn render_nav_body(
             let note = if let Ok(note) = ctx.ndb.get_note_by_id(&txn, id.bytes()) {
                 note
             } else {
-                ui.label("Quote of unknown note");
+                ui.label(tr!("Quote of unknown note"));
                 return None;
             };
 

@@ -16,6 +16,7 @@ use notedeck_ui::{
     anim::{AnimationHelper, ICON_EXPANSION_MULTIPLE},
     ProfilePic,
 };
+use notedeck::tr;
 
 pub struct NavTitle<'a> {
     ndb: &'a Ndb,
@@ -182,12 +183,12 @@ impl<'a> NavTitle<'a> {
         if ui.data_mut(|d| *d.get_temp_mut_or_default(id)) {
             let mut confirm_pressed = false;
             delete_button_resp.show_tooltip_ui(|ui| {
-                let confirm_resp = ui.button("Confirm");
+                let confirm_resp = ui.button(tr!("Confirm"));
                 if confirm_resp.clicked() {
                     confirm_pressed = true;
                 }
 
-                if confirm_resp.clicked() || ui.button("Cancel").clicked() {
+                if confirm_resp.clicked() || ui.button(tr!("Cancel")).clicked() {
                     ui.data_mut(|d| d.insert_temp(id, false));
                 }
             });
@@ -196,7 +197,7 @@ impl<'a> NavTitle<'a> {
             }
             confirm_pressed
         } else {
-            delete_button_resp.on_hover_text("Delete this column");
+            delete_button_resp.on_hover_text(tr!("Delete this column"));
             false
         }
     }
@@ -208,7 +209,7 @@ impl<'a> NavTitle<'a> {
 
         // showing the hover text while showing the move tooltip causes some weird visuals
         if ui.data(|d| d.get_temp::<bool>(cur_id).is_none()) {
-            move_resp = move_resp.on_hover_text("Moves this column to another positon");
+            move_resp = move_resp.on_hover_text(tr!("Moves this column to another position"));
         }
 
         if move_resp.clicked() {

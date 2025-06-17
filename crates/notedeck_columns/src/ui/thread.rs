@@ -1,6 +1,6 @@
 use enostr::KeypairUnowned;
 use nostrdb::Transaction;
-use notedeck::{MuteFun, NoteAction, NoteContext, RootNoteId, UnknownIds};
+use notedeck::{MuteFun, NoteAction, NoteContext, RootNoteId, UnknownIds, tr_with_context};
 use notedeck_ui::jobs::JobsCache;
 use notedeck_ui::NoteOptions;
 use tracing::error;
@@ -76,7 +76,7 @@ impl<'a, 'd> ThreadView<'a, 'd> {
                 Ok(root_id) => root_id,
 
                 Err(err) => {
-                    ui.label(format!("Error loading thread: {:?}", err));
+                    ui.label(tr_with_context!("Error loading thread: {error:?}", "error" => format!("{:?}", err)));
                     return None;
                 }
             };

@@ -4,7 +4,7 @@ use nostrdb::{Note, NoteReply, Transaction};
 use super::NoteOptions;
 use crate::{jobs::JobsCache, note::NoteView, Mention};
 use enostr::KeypairUnowned;
-use notedeck::{NoteAction, NoteContext};
+use notedeck::{NoteAction, NoteContext, tr};
 
 #[must_use = "Please handle the resulting note action"]
 #[profiling::function]
@@ -51,14 +51,14 @@ pub fn reply_desc(
         }
     };
 
-    ui.add(Label::new(RichText::new("replying to").size(size).color(color)).selectable(selectable));
+    ui.add(Label::new(RichText::new(tr!("replying to")).size(size).color(color)).selectable(selectable));
 
     let reply = note_reply.reply()?;
 
     let reply_note = if let Ok(reply_note) = note_context.ndb.get_note_by_id(txn, reply.id) {
         reply_note
     } else {
-        ui.add(Label::new(RichText::new("a note").size(size).color(color)).selectable(selectable));
+        ui.add(Label::new(RichText::new(tr!("a note")).size(size).color(color)).selectable(selectable));
         return None;
     };
 
@@ -78,9 +78,9 @@ pub fn reply_desc(
             note_action = action;
         }
 
-        ui.add(Label::new(RichText::new("'s").size(size).color(color)).selectable(selectable));
+        ui.add(Label::new(RichText::new(tr!("'s")).size(size).color(color)).selectable(selectable));
 
-        note_link(ui, note_context, "thread", &reply_note, jobs);
+        note_link(ui, note_context, tr!("thread").as_str(), &reply_note, jobs);
     } else if let Some(root) = note_reply.root() {
         // replying to another post in a thread, not the root
 
@@ -102,10 +102,10 @@ pub fn reply_desc(
                 }
 
                 ui.add(
-                    Label::new(RichText::new("'s").size(size).color(color)).selectable(selectable),
+                    Label::new(RichText::new(tr!("'s")).size(size).color(color)).selectable(selectable),
                 );
 
-                note_link(ui, note_context, "note", &reply_note, jobs);
+                note_link(ui, note_context, tr!("note").as_str(), &reply_note, jobs);
             } else {
                 // replying to bob in alice's thread
 
@@ -124,13 +124,13 @@ pub fn reply_desc(
                 }
 
                 ui.add(
-                    Label::new(RichText::new("'s").size(size).color(color)).selectable(selectable),
+                    Label::new(RichText::new(tr!("'s")).size(size).color(color)).selectable(selectable),
                 );
 
-                note_link(ui, note_context, "note", &reply_note, jobs);
+                note_link(ui, note_context, tr!("note").as_str(), &reply_note, jobs);
 
                 ui.add(
-                    Label::new(RichText::new("in").size(size).color(color)).selectable(selectable),
+                    Label::new(RichText::new(tr!("in")).size(size).color(color)).selectable(selectable),
                 );
 
                 let action = Mention::new(
@@ -148,10 +148,10 @@ pub fn reply_desc(
                 }
 
                 ui.add(
-                    Label::new(RichText::new("'s").size(size).color(color)).selectable(selectable),
+                    Label::new(RichText::new(tr!("'s")).size(size).color(color)).selectable(selectable),
                 );
 
-                note_link(ui, note_context, "thread", &root_note, jobs);
+                note_link(ui, note_context, tr!("thread").as_str(), &root_note, jobs);
             }
         } else {
             let action = Mention::new(
@@ -169,7 +169,7 @@ pub fn reply_desc(
             }
 
             ui.add(
-                Label::new(RichText::new("in someone's thread").size(size).color(color))
+                Label::new(RichText::new(tr!("in someone's thread")).size(size).color(color))
                     .selectable(selectable),
             );
         }

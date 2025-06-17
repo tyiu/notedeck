@@ -1,7 +1,7 @@
 use egui::{vec2, CornerRadius, Layout};
 use notedeck::{
     get_current_wallet, Accounts, DefaultZapMsats, GlobalWallet, NotedeckTextStyle,
-    PendingDefaultZapState, Wallet, WalletError, WalletUIState, ZapWallet,
+    PendingDefaultZapState, Wallet, WalletError, WalletUIState, ZapWallet, tr,
 };
 
 use crate::{nav::RouterAction, route::Route};
@@ -221,8 +221,8 @@ fn show_no_wallet(
         };
 
         let error_str = match error_msg {
-            WalletError::InvalidURI => "Invalid NWC URI",
-            WalletError::NoWallet => "Add a wallet to continue",
+            WalletError::InvalidURI => tr!("Invalid NWC URI"),
+            WalletError::NoWallet => tr!("Add a wallet to continue"),
         };
         ui.colored_label(ui.visuals().warn_fg_color, error_str);
     });
@@ -232,13 +232,13 @@ fn show_no_wallet(
     if show_local_only {
         ui.checkbox(
             &mut state.for_local_only,
-            "Use this wallet for the current account only",
+            tr!("Use this wallet for the current account only"),
         );
         ui.add_space(8.0);
     }
 
     ui.with_layout(Layout::top_down(egui::Align::Center), |ui| {
-        ui.add(styled_button("Add Wallet", notedeck_ui::colors::PINK))
+        ui.add(styled_button(tr!("Add Wallet").as_str(), notedeck_ui::colors::PINK))
             .clicked()
             .then_some(WalletAction::SaveURI)
     })
@@ -271,7 +271,7 @@ fn show_with_wallet(
 
     ui.with_layout(Layout::bottom_up(egui::Align::Min), |ui| 's: {
         if ui
-            .add(styled_button("Delete Wallet", ui.visuals().window_fill))
+            .add(styled_button(tr!("Delete Wallet").as_str(), ui.visuals().window_fill))
             .clicked()
         {
             action = Some(WalletAction::Delete);
@@ -283,7 +283,7 @@ fn show_with_wallet(
             && ui
                 .checkbox(
                     &mut false,
-                    "Add a different wallet that will only be used for this account",
+                    tr!("Add a different wallet that will only be used for this account"),
                 )
                 .clicked()
         {
@@ -311,7 +311,7 @@ fn show_default_zap(ui: &mut egui::Ui, state: &mut DefaultZapState) -> Option<Wa
         vec2(ui.available_width(), 50.0),
         egui::Layout::left_to_right(egui::Align::Center).with_main_wrap(true),
         |ui| {
-            ui.label("Default amount per zap: ");
+            ui.label(tr!("Default amount per zap: "));
             match state {
                 DefaultZapState::Pending(pending_default_zap_state) => {
                     let text = &mut pending_default_zap_state.amount_sats;
@@ -343,10 +343,10 @@ fn show_default_zap(ui: &mut egui::Ui, state: &mut DefaultZapState) -> Option<Wa
 
                     ui.memory_mut(|m| m.request_focus(id));
 
-                    ui.label(" sats");
+                    ui.label(tr!(" sats"));
 
                     if ui
-                        .add(styled_button("Save", ui.visuals().widgets.active.bg_fill))
+                        .add(styled_button(tr!("Save").as_str(), ui.visuals().widgets.active.bg_fill))
                         .clicked()
                     {
                         action = Some(WalletAction::SetDefaultZapSats(text.to_string()));
@@ -356,14 +356,14 @@ fn show_default_zap(ui: &mut egui::Ui, state: &mut DefaultZapState) -> Option<Wa
                     if let Some(wallet_action) = show_valid_msats(ui, **msats) {
                         action = Some(wallet_action);
                     }
-                    ui.label(" sats");
+                    ui.label(tr!(" sats"));
                 }
             }
 
             if let DefaultZapState::Pending(pending) = state {
                 if let Some(error_message) = &pending.error_message {
                     let msg_str = match error_message {
-                        notedeck::DefaultZapError::InvalidUserInput => "Invalid amount",
+                        notedeck::DefaultZapError::InvalidUserInput => tr!("Invalid amount"),
                     };
 
                     ui.colored_label(ui.visuals().warn_fg_color, msg_str);
@@ -391,7 +391,7 @@ fn show_valid_msats(ui: &mut egui::Ui, msats: u64) -> Option<WalletAction> {
 
     let resp = resp
         .on_hover_cursor(egui::CursorIcon::PointingHand)
-        .on_hover_text_at_pointer("Click to edit");
+        .on_hover_text_at_pointer(tr!("Click to edit"));
 
     let painter = ui.painter_at(resp.rect);
 

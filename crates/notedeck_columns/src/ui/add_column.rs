@@ -16,7 +16,7 @@ use crate::{
     Damus,
 };
 
-use notedeck::{AppContext, Images, NotedeckTextStyle, UserAccount};
+use notedeck::{AppContext, Images, NotedeckTextStyle, UserAccount, tr_with_context};
 use notedeck_ui::anim::ICON_EXPANSION_MULTIPLE;
 use tokenator::{ParseError, TokenParser, TokenSerializable, TokenWriter};
 
@@ -667,7 +667,7 @@ pub fn render_add_column_routes(
                 }
 
                 // We have a decision on where we want the last per pubkey
-                // source to be, so let;s create a timeline from that and
+                // source to be, so let's create a timeline from that and
                 // add it to our list of timelines
                 AlgoOption::LastPerPubkey(Decision::Decided(list_kind)) => {
                     let txn = Transaction::new(ctx.ndb).unwrap();
@@ -699,7 +699,7 @@ pub fn render_add_column_routes(
 
                         // TODO: spin off the list search here instead
 
-                        ui.label(format!("error: could not find {:?}", list_kind));
+                        ui.label(tr_with_context!("error: could not find {list_kind:?}", "list_kind" => format!("{:?}", list_kind)));
                     }
                 }
             },

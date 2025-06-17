@@ -6,6 +6,7 @@ use notedeck_ui::{
     colors::PINK,
     padding,
 };
+use notedeck::{tr, tr_with_context};
 
 pub struct ConfigureDeckView<'a> {
     state: &'a mut DeckState,
@@ -39,13 +40,13 @@ impl<'a> ConfigureDeckView<'a> {
         );
         padding(16.0, ui, |ui| {
             ui.add(Label::new(
-                RichText::new("Deck name").font(title_font.clone()),
+                RichText::new(tr!("Deck name")).font(title_font.clone()),
             ));
             ui.add_space(8.0);
             ui.text_edit_singleline(&mut self.state.deck_name);
             ui.add_space(8.0);
             ui.add(Label::new(
-                RichText::new("We recommend short names")
+                RichText::new(tr!("We recommend short names"))
                     .color(ui.visuals().noninteractive().fg_stroke.color)
                     .size(notedeck::fonts::get_font_size(
                         ui.ctx(),
@@ -54,7 +55,7 @@ impl<'a> ConfigureDeckView<'a> {
             ));
 
             ui.add_space(32.0);
-            ui.add(Label::new(RichText::new("Icon").font(title_font)));
+            ui.add(Label::new(RichText::new(tr!("Icon")).font(title_font)));
 
             if ui
                 .add(deck_icon(
@@ -124,22 +125,22 @@ fn show_warnings(ui: &mut Ui, warn_no_icon: bool, warn_no_title: bool) {
     if warn_no_icon || warn_no_title {
         let messages = [
             if warn_no_title {
-                "create a name for the deck"
+                tr!("create a name for the deck")
             } else {
-                ""
+                "".to_string()
             },
-            if warn_no_icon { "select an icon" } else { "" },
+            if warn_no_icon { tr!("select an icon") } else { "".to_string() },
         ];
         let message = messages
             .iter()
-            .filter(|&&m| !m.is_empty())
-            .copied()
+            .filter(|m| !m.is_empty())
+            .cloned()
             .collect::<Vec<_>>()
             .join(" and ");
 
         ui.add(
             egui::Label::new(
-                RichText::new(format!("Please {}.", message)).color(ui.visuals().error_fg_color),
+                RichText::new(tr_with_context!("Please {message}.", "message" => message)).color(ui.visuals().error_fg_color),
             )
             .wrap(),
         );

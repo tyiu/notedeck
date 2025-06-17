@@ -5,7 +5,7 @@ use state::TypingType;
 use crate::{timeline::TimelineTab, ui::timeline::TimelineTabView};
 use egui_winit::clipboard::Clipboard;
 use nostrdb::{Filter, Ndb, Transaction};
-use notedeck::{MuteFun, NoteAction, NoteContext, NoteRef};
+use notedeck::{MuteFun, NoteAction, NoteContext, NoteRef, tr, tr_with_context};
 use notedeck_ui::{icons::search_icon, jobs::JobsCache, padding, NoteOptions};
 use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
@@ -124,15 +124,11 @@ impl<'a, 'd> SearchView<'a, 'd> {
                 note_action = self.show_search_results(ui);
             }
             SearchState::Searched => {
-                ui.label(format!(
-                    "Got {} results for '{}'",
-                    self.query.notes.notes.len(),
-                    &self.query.string
-                ));
+                ui.label(tr_with_context!("Got {count} results for '{query}'", "count" => self.query.notes.notes.len(), "query" => &self.query.string));
                 note_action = self.show_search_results(ui);
             }
             SearchState::Typing(TypingType::AutoSearch) => {
-                ui.label(format!("Searching for '{}'", &self.query.string));
+                ui.label(tr_with_context!("Searching for '{query}'", "query" => &self.query.string));
 
                 note_action = self.show_search_results(ui);
             }
@@ -297,7 +293,7 @@ fn search_box(
                     );
 
                     response.context_menu(|ui| {
-                        if ui.button("paste").clicked() {
+                        if ui.button(tr!("paste")).clicked() {
                             if let Some(text) = clipboard.get() {
                                 input.clear();
                                 input.push_str(&text);
