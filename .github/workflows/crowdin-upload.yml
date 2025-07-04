@@ -1,0 +1,67 @@
+name: Crowdin Upload & Sync
+
+on:
+  push:
+    branches: [ master ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  crowdin-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch crowdin-translations branch
+        run: |
+          git fetch origin crowdin-translations:crowdin-translations || true
+
+      - name: Checkout crowdin-translations branch
+        run: git checkout crowdin-translations || git checkout -b crowdin-translations
+
+      - name: Rebase master onto crowdin-translations
+        run: git rebase master
+
+      - name: Fail if rebase conflicts occurred
+        run: |
+          if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
+            echo "❌ Rebase conflict detected! Please resolve conflicts in the crowdin-translations branch manually."
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run export_source_strings.py
+        run: python3 scripts/export_source_strings.py
+
+      - name: Check for changes in main.ftl
+        id: check_diff
+        run: |
+          git diff --quiet assets/translations/en-US/main.ftl assets/translations/en-XA/main.ftl || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit changes to crowdin-translations
+        if: steps.check_diff.outputs.changed == 'true'
+        run: |
+          git add assets/translations/en-US/main.ftl assets/translations/en-XA/main.ftl
+          git commit -m "Update source strings from export_source_strings.py" || true
+          git push --force origin crowdin-translations
+
+      - name: Crowdin upload sources
+        uses: crowdin/github-action@v2
+        with:
+          upload_sources: true
+          upload_translations: false
+          download_translations: false
+          localization_branch_name: crowdin-translations
+          create_pull_request: true
+          pull_request_title: 'Crowdin Translations'
+          pull_request_body: 'Crowdin translations by [Crowdin GH Action](https://github.com/crowdin/github-action)'
+          pull_request_base_branch_name: 'master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
