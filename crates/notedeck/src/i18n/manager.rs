@@ -3,6 +3,7 @@ use fluent::{FluentArgs, FluentBundle, FluentResource};
 use fluent_langneg::negotiate_languages;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use sys_locale;
 use unic_langid::{langid, LanguageIdentifier};
 
 const EN_US: LanguageIdentifier = langid!("en-US");
@@ -101,10 +102,6 @@ pub struct Localization {
 
 impl Default for Localization {
     fn default() -> Self {
-        // Default to English (US)
-        let default_locale = &EN_US;
-        let fallback_locale = default_locale.to_owned();
-
         // Build available locales list
         let available_locales = vec![
             EN_US.clone(),
@@ -132,8 +129,20 @@ impl Default for Localization {
             (ZH_TW, ZH_TW_NATIVE_NAME.to_owned()),
         ]);
 
+        // Detect system locale and find best match
+        let current_locale = Self::negotiate_system_locale_with_preferences(&available_locales);
+
+        // Fallback locale is always EN_US
+        let fallback_locale = EN_US.clone();
+
+        tracing::info!(
+            "Localization initialized - Selected locale: {}, Fallback: {}",
+            current_locale,
+            fallback_locale
+        );
+
         Self {
-            current_locale: default_locale.to_owned(),
+            current_locale,
             available_locales,
             fallback_locale,
             locale_native_names,
@@ -157,6 +166,150 @@ impl Localization {
             use_isolating: false,
             ..Localization::default()
         }
+    }
+
+    /// Extract just the language and region from locale string (e.g., "fr-FR-u-mu-celsius" -> "fr-FR")
+    fn extract_language_region(locale_str: &str) -> String {
+        // Split by '-' and analyze the parts
+        let parts: Vec<&str> = locale_str.split('-').collect();
+
+        if parts.len() >= 2 {
+            // Check if the second part looks like a region
+            let second_part = parts[1];
+            if (second_part.len() >= 2) {
+                format!("{}-{}", parts[0], parts[1])
+            } else {
+                // Second part is not a region, probably an extension (e.g., "u", "t", "x")
+                // Just return the language part
+                parts[0].to_string()
+            }
+        } else {
+            // Only one part, return as is
+            locale_str.to_string()
+        }
+    }
+
+    /// Negotiate the best locale from all system preferences against available locales
+    fn negotiate_system_locale_with_preferences(
+        available_locales: &[LanguageIdentifier],
+    ) -> LanguageIdentifier {
+        // Get all system preferred locales in descending order
+        let mut system_locales: Vec<String> = sys_locale::get_locales().collect();
+        if system_locales.is_empty() {
+            tracing::info!("No system locales detected, using fallback: en-US");
+            return EN_US.clone();
+        }
+
+        tracing::info!("System preferred locales: {:?}", system_locales);
+
+        // If we only got one locale, it might be that the system only returns the primary locale
+        // In this case, we can try to add common fallbacks based on the detected locale
+        if system_locales.len() == 1 {
+            let primary = &system_locales[0];
+
+            // Try to parse the primary locale, handling extensions
+            let primary_lang = if let Ok(locale) = primary.parse::<LanguageIdentifier>() {
+                locale.language.as_str().to_string()
+            } else {
+                // If parsing fails, try extracting language-region
+                // let stripped = Self::extract_language_region(primary);
+                // if let Ok(locale) = stripped.parse::<LanguageIdentifier>() {
+                //     locale.language.as_str().to_string()
+                // } else {
+                    tracing::info!("Could not parse primary locale: {}", primary);
+                    "unknown".to_string()
+                // }
+            };
+
+            tracing::info!(
+                "Only one system locale detected: {} (language: {})",
+                primary,
+                primary_lang
+            );
+
+            // Add common fallbacks for the detected language
+            match primary_lang.as_str() {
+                "uk" => {
+                    // For Ukrainian, add common fallbacks
+                    system_locales.push("es-ES".to_string());
+                    system_locales.push("en-US".to_string());
+                    tracing::info!("Added fallbacks for Ukrainian: {:?}", system_locales);
+                }
+                "es" => {
+                    // For Spanish, add English fallback
+                    system_locales.push("en-US".to_string());
+                    tracing::info!("Added fallback for Spanish: {:?}", system_locales);
+                }
+                _ => {
+                    // For other languages, add English fallback
+                    system_locales.push("en-US".to_string());
+                    tracing::info!("Added fallback for {}: {:?}", primary_lang, system_locales);
+                }
+            }
+        }
+
+        // Convert system locale strings to LanguageIdentifiers, handling extensions
+        let mut parsed_system_locales = Vec::new();
+        for locale_str in system_locales {
+            // Try to parse the locale string directly first
+            if let Ok(locale) = locale_str.parse::<LanguageIdentifier>() {
+                parsed_system_locales.push(locale);
+                continue;
+            }
+
+            // If parsing fails, try extracting just language-region
+            // let stripped_locale = Self::extract_language_region(&locale_str);
+            // if let Ok(locale) = stripped_locale.parse::<LanguageIdentifier>() {
+            //     parsed_system_locales.push(locale);
+            //     continue;
+            // }
+
+            tracing::info!("Failed to parse locale string: {}", locale_str);
+        }
+
+        if parsed_system_locales.is_empty() {
+            tracing::info!("No valid system locales parsed, using fallback: en-US");
+            return EN_US.clone();
+        }
+
+        // First try exact matches with fluent_langneg
+        let fallback = &EN_US;
+        let negotiated = negotiate_languages(
+            &parsed_system_locales,
+            available_locales,
+            Some(fallback),
+            fluent_langneg::NegotiationStrategy::Filtering,
+        );
+
+        if let Some(result) = negotiated.first() {
+            tracing::info!(
+                "Exact match found: {} from preferences: {:?}",
+                result,
+                parsed_system_locales
+            );
+            return (*result).clone();
+        }
+
+        // If no exact match, try language-only fallbacks
+        tracing::info!("No exact matches found, trying language-only fallbacks");
+        for system_locale in &parsed_system_locales {
+            let system_lang = system_locale.language.as_str();
+
+            // Look for any available locale with the same language
+            for available_locale in available_locales {
+                if available_locale.language.as_str() == system_lang {
+                    tracing::debug!(
+                        "Language match found: {} (system: {})",
+                        available_locale,
+                        system_locale
+                    );
+                    return available_locale.clone();
+                }
+            }
+        }
+
+        tracing::info!("No language matches found, using fallback: en-US");
+        EN_US.clone()
     }
 
     /// Gets a localized string by its ID
@@ -458,20 +611,6 @@ impl Localization {
 
         Ok(())
     }
-
-    /// Negotiates the best locale from a list of preferred locales
-    pub fn negotiate_locale(&self, preferred: &[LanguageIdentifier]) -> LanguageIdentifier {
-        let available = self.available_locales.clone();
-        let negotiated = negotiate_languages(
-            preferred,
-            &available,
-            Some(&self.fallback_locale),
-            fluent_langneg::NegotiationStrategy::Filtering,
-        );
-        negotiated
-            .first()
-            .map_or(self.fallback_locale.clone(), |v| (*v).clone())
-    }
 }
 
 /// Statistics about cache usage
@@ -484,6 +623,80 @@ pub struct CacheStats {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_language_region() {
+        // Test that we extract just language and region from various locale formats
+
+        // Test locales with extensions
+        let unicode_locale = "fr-FR-u-mu-celsius";
+        let extracted = Localization::extract_language_region(unicode_locale);
+        assert_eq!(extracted, "fr-FR");
+
+        let transformed_locale = "en-US-t-0-abc123";
+        let extracted = Localization::extract_language_region(transformed_locale);
+        assert_eq!(extracted, "en-US");
+
+        let private_locale = "de-DE-x-phonebk";
+        let extracted = Localization::extract_language_region(private_locale);
+        assert_eq!(extracted, "de-DE");
+
+        // Test simple locale (no extensions)
+        let simple_locale = "en-US";
+        let extracted = Localization::extract_language_region(simple_locale);
+        assert_eq!(extracted, "en-US");
+
+        // Test language-only locale
+        let lang_only = "en";
+        let extracted = Localization::extract_language_region(lang_only);
+        assert_eq!(extracted, "en");
+
+        // Test language with extensions (no region)
+        let lang_with_extensions = "fr-u-mu-celsius";
+        let extracted = Localization::extract_language_region(lang_with_extensions);
+        assert_eq!(extracted, "fr");
+
+        // Test language with other extension types (no region)
+        let lang_with_t_ext = "en-t-0-abc123";
+        let extracted = Localization::extract_language_region(lang_with_t_ext);
+        assert_eq!(extracted, "en");
+
+        let lang_with_x_ext = "de-x-phonebk";
+        let extracted = Localization::extract_language_region(lang_with_x_ext);
+        assert_eq!(extracted, "de");
+
+        // Test locale with numeric region code
+        let numeric_region = "es-419-u-mu-celsius";
+        let extracted = Localization::extract_language_region(numeric_region);
+        assert_eq!(extracted, "es-419");
+
+        // Test locale with 3-letter region code
+        let three_letter_region = "en-USA-t-0-abc123";
+        let extracted = Localization::extract_language_region(three_letter_region);
+        assert_eq!(extracted, "en-USA");
+
+        // Test locale with 2-letter region code
+        let two_letter_region = "fr-FR-u-mu-celsius";
+        let extracted = Localization::extract_language_region(two_letter_region);
+        assert_eq!(extracted, "fr-FR");
+
+        // Test complex locale with multiple parts
+        let complex_locale = "zh-CN-u-ca-chinese-x-private";
+        let extracted = Localization::extract_language_region(complex_locale);
+        assert_eq!(extracted, "zh-CN");
+
+        // Verify that extracted locales can be parsed
+        let test_cases = ["fr-FR", "en-US", "de-DE", "en", "zh-CN"];
+        for extracted in test_cases {
+            if let Ok(locale) = extracted.parse::<LanguageIdentifier>() {
+                tracing::info!("Successfully parsed extracted locale: {}", locale);
+            } else {
+                tracing::error!("Failed to parse extracted locale: {}", extracted);
+                panic!("Should parse locale after extraction");
+            }
+        }
+    }
 
     //
     // TODO(jb55): write tests that work, i broke all these during the refacto

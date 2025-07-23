@@ -45,6 +45,7 @@ fluent = { workspace = true }
 fluent-resmgr = { workspace = true }
 fluent-langneg = { workspace = true }
 unic-langid = { workspace = true }
+sys-locale = { workspace = true }
 once_cell = { workspace = true }
 md5 = { workspace = true }
 bitflags = { workspace = true }
